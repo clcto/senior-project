@@ -15,11 +15,17 @@ public class IndoorLocalization extends Activity
    public void onCreate(Bundle savedInstanceState)
    {
       super.onCreate(savedInstanceState);
+/*
       TextView tv = new TextView( this );
       tv.setText( "Scanning for Wifi Networks...\n" +
                   "\tDisplays best signals\n" );
 
       setContentView( tv );
+*/
+      BuildingMap map = new BuildingMap( this ); 
+      setContentView( map );
+      map.draw();
+      map.setCenterPixel( 0, 0 );
    }
 
    @Override
@@ -38,26 +44,3 @@ public class IndoorLocalization extends Activity
       super.onStop();
    }
 }
-
-/*
-        Context c = getApplicationContext();
-        if( c != null )
-        {
-           tv.setText( "c != null" );
-           WifiManager wm = 
-               (WifiManager) c.getSystemService( Context.WIFI_SERVICE );
-           if( wm != null )
-           {
-              tv.setText( "wm != null" );
-              wm.startScan();
-              try
-              {
-                 Thread.sleep( 10000 );
-              }
-              catch( Exception e ){}
-              List<ScanResult> networks = wm.getScanResults();
-
-              tv.setText( "Number of networks: " + networks.get(0).toString() );
-           }
-        }
-        */
