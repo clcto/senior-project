@@ -1,18 +1,22 @@
 
 package edu.unh.cdj26.senior_project;
 
-import android.app.Service;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.BroadcastReceiver;
-import android.widget.Toast;
-import android.content.Context;
+import android.app.*;
+import android.content.*;
+import android.widget.*;
 import android.net.wifi.*;
 import android.os.*;
+import java.io.*;
 
 public class WifiService extends Service
 {
    private BroadcastReceiver receiver;
+   private boolean isRunning;
+
+   private double distance;
+   private String macAddress;
+   private File csvFile;
+   private EditText macEntry;
 
    @Override
    public IBinder onBind( Intent intent )
@@ -23,34 +27,7 @@ public class WifiService extends Service
    @Override
    public void onCreate()
    {
-      IntentFilter i = new IntentFilter();
-      i.addAction( WifiManager.SCAN_RESULTS_AVAILABLE_ACTION );
-      receiver = new BroadcastReceiver()
-         {
-            public void onReceive( Context c, Intent i )
-            {
-               new WifiDataProcessor( c, 
-                     new Handler()
-                     {
-                        @Override
-                        public void handleMessage( Message m )
-                        {
-                           Toast.makeText( 
-                              getApplicationContext(),
-                              m.getData().getString("infoString"),
-                              Toast.LENGTH_SHORT ).show();
-                        }
-                     } );
-                  
-            }
-         };
-
-      registerReceiver( receiver, i );
-   }
-
-   @Override
-   public void onDestroy()
-   {
+      isRunning = false;
 
    }
 
@@ -69,11 +46,101 @@ public class WifiService extends Service
       handleCommand( intent );
    }
 
+   @Override
+   public void onDestroy()
+   {
+      unregisterReceiver( receiver );
+      super.onDestroy();
+   }
+
    private void handleCommand( Intent intent )
    {
-      WifiManager wm;
-      wm = (WifiManager) getApplicationContext().getSystemService( 
-                                                 Context.WIFI_SERVICE );
-      wm.startScan();
+      if( !isRunning )
+      {
+         isRunning = true;
+         Application app = getApplication();
+
+         distance = Math.sqrt( Math.pow( intent.getDoubleExtra( "vert", 0 ), 2 ) +
+                               Math.pow( intent.getDoubleExtra( "horiz", 0 ), 2 ) );
+
+         macAddress = intent.getStringExtra( "mac" );
+          
+         IntentFilter i = new IntentFilter();
+         i.addAction( WifiManager.SCAN_RESULTS_AVAILABLE_ACTION );
+         receiver = new WifiReceiver();
+
+         registerReceiver( receiver, i );
+         WifiManager wm;
+         wm = (WifiManager) 
+            getApplicationContext().getSystemService( Context.WIFI_SERVICE );
+         wm.startScan();
+      }
+   }
+
+   private class WifiReceiver extends BroadcastReceiver
+   {
+      @Override
+      public void onReceive( Context c, Intent i )
+      {
+         new WifiDataProcessor( c, new WifiHandler(), macAddress );
+            
+      }
+      
+      private class WifiHandler extends Handler
+      {
+         @Override
+         public void handleMessage( Message m )
+         {
+            Bundle info = m.getData();
+
+            File appDir = Environment.getExternalStorageDirectory();
+
+            if( !appDir.exists() )
+               appDir.mkdir();
+
+            File csvFile = new File( appDir, "wifi_data.csv" );
+            try
+            { 
+               FileWriter output = new FileWriter( csvFile, true );
+               BufferedWriter out = new BufferedWriter( output );
+               out.write( distance + "," + info.getInt( "level" ) + "\n" );
+               out.close();
+            }
+            catch( FileNotFoundException e ){ System.err.println( "fnf ex" ); }
+            catch( IOException e ){ System.err.println( "io ex" ); }
+
+            Toast.makeText( 
+               getApplicationContext(),
+               distance + ", " + info.getInt( "level" ), 
+               Toast.LENGTH_LONG 
+            ).show();
+
+               // use the notification system to post the MAC address used.
+               // this allows for the user to place it in the form field 
+               // so future scans will use the proper AP.
+            if( info.containsKey( "mac" ) )
+            {
+               String ns = Context.NOTIFICATION_SERVICE;
+               NotificationManager nm = (NotificationManager)getSystemService(ns);
+               Notification notif = new Notification( 
+                  R.drawable.notification, info.getString("mac"),
+                  System.currentTimeMillis() );
+
+               Context cont = getApplicationContext();
+               PendingIntent contentIntent = PendingIntent.getActivity(
+                  cont, 0, null, 0 );
+
+               notif.setLatestEventInfo( cont, "Best AP MAC", 
+                  info.getString("mac") + " -- " + info.getInt( "level"), 
+                  contentIntent );
+
+               nm.notify( 1, notif );
+
+            }
+            stopSelf();
+         }
+         
+      }
+
    }
 }

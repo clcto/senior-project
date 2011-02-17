@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout 
+   xmlns:android="http://schemas.android.com/apk/res/android"
+   android:orientation="vertical"
+   android:layout_width="fill_parent"
+   android:layout_height="fill_parent"
+   >
+   <TextView  
+      android:layout_width="fill_parent" 
+      android:layout_height="wrap_content" 
+      android:text="Access Point Height (m)"
+      />
+   <EditText
+      android:id="@+id/height_entry"
+      android:layout_width="fill_parent"
+      android:layout_height="wrap_content"
+      android:inputType="numberDecimal"
+      />
+   <TextView  
+      android:layout_width="fill_parent" 
+      android:layout_height="wrap_content" 
+      android:text="Horizontal Distance (m)"
+      />
+   <EditText
+      android:id="@+id/horizontal_entry"
+      android:layout_width="fill_parent"
+      android:layout_height="wrap_content"
+      android:inputType="numberDecimal"
+      />
+   <TextView  
+      android:layout_width="fill_parent" 
+      android:layout_height="wrap_content" 
+      android:text="AP MAC Address (leave blank for best RSS)"
+      />
+   <EditText
+      android:id="@+id/mac_entry"
+      android:layout_width="fill_parent"
+      android:layout_height="wrap_content"
+      />
+   <CheckBox
+      android:id="@+id/overwrite"
+      android:layout_width="fill_parent"
+      android:layout_height="wrap_content"
+      android:text="Overwrite CSV File"
+      />
+   <Button
+      android:id="@+id/record_button"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="Record RSS"
+      />
+</LinearLayout>
+
