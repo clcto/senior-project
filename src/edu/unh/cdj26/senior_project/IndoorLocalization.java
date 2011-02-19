@@ -19,8 +19,9 @@ public class IndoorLocalization extends Activity
    {
       super.onCreate(savedInstanceState);
 
-      setContentView( R.layout.wifi_data );
+      setContentView( new BuildingMap( this ) );
 
+      /*
       Button submit = (Button) findViewById( R.id.record_button );
       submit.setOnClickListener( 
          new View.OnClickListener()
@@ -39,6 +40,7 @@ public class IndoorLocalization extends Activity
                go();
             }
          } );
+      */
    }
 
    private void go()
