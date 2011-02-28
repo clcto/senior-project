@@ -3,10 +3,10 @@
       package="edu.unh.cdj26.senior_project"
       android:versionCode="1"
       android:versionName="1.0">
-    <application android:label="@string/app_name"
+    <application android:label="Indoor Localization"
                  android:icon="@drawable/ic_launcher_target">
         <activity android:name="IndoorLocalization"
-                  android:label="@string/app_name">
+                  android:label="Indoor Localization">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
