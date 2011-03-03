@@ -19,7 +19,9 @@ public class IndoorLocalization extends Activity
    {
       super.onCreate(savedInstanceState);
 
-      setContentView( new BuildingMap( this ) );
+      BuildingMap map = new BuildingMap( this );
+      setContentView( map );
+      map.setCenterPixel( 446, 347);
 
       /*
       Button submit = (Button) findViewById( R.id.record_button );

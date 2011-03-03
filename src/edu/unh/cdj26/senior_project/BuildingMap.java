@@ -2,19 +2,19 @@
 package edu.unh.cdj26.senior_project;
 
 import android.content.Context;
-import android.graphics.Canvas;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.drawable.Drawable;
+import android.graphics.drawable.*;
 import android.view.*;
-import android.graphics.Paint;
+import android.graphics.*;
+import java.util.*;
 
 public class BuildingMap extends View
 {
 
    private Drawable mapImage;
    private int mapWidth, mapHeight;
-
+   private int xLoc, yLoc;
+   private Location locRelative;
+   private ArrayList<AccessPoint> accessPoints;
 
    public BuildingMap( Context c )
    {
@@ -28,12 +28,30 @@ public class BuildingMap extends View
       mapHeight = bitmap.getHeight();
 
       setUpperLeftPixel( 0, 0 );
+
+      accessPoints = new ArrayList<AccessPoint>();
+      accessPoints.add( new AccessPoint( 340, 340, 2, "" ) );
    }
 
    @Override
    protected void onDraw( Canvas canvas )
    {
       super.onDraw( canvas );
+
+      switch( locRelative )
+      {
+         case UpperLeft:
+            mapImage.setBounds( -xLoc, -yLoc, 
+                  -xLoc + mapWidth, -yLoc + mapHeight );
+            break;
+         case Center:
+            int x = xLoc - getWidth()/2;
+            int y = yLoc - getHeight()/2;
+            mapImage.setBounds( -x, -y, 
+                  -x + mapWidth, -y + mapHeight );
+            break;
+      }
+
       mapImage.draw( canvas );
       
       Paint brush = new Paint();
@@ -44,21 +62,50 @@ public class BuildingMap extends View
       brush.setStrokeCap( Paint.Cap.ROUND );
       brush.setStrokeWidth( 2 );
 
-      float[] points = {0,0,20,20,20,20,0,20,0,20,0,0};
-      
-      canvas.drawLines( points, brush );
+      Rect bounds = mapImage.getBounds();
+
+      for( AccessPoint ap : accessPoints )
+      {
+         double apX = ap.getX(); 
+         double apY = ap.getY();
+
+         if(  apX + bounds.left >= 0 &&
+              apX + bounds.left <= getWidth() &&
+              apY + bounds.top  >= 0 && 
+              apY + bounds.top  <= getHeight() )
+         {
+            Path p = new Path();
+            p.moveTo( (float) apX + bounds.left - 5, 
+                      (float) apY + bounds.top + 4 );
+            
+            p.rLineTo( 10, 0 );
+            p.rLineTo( -5, -8 );
+            p.rLineTo( -5, 8 );
+
+            canvas.drawPath( p, brush );
+
+
+
+         }
+      }
    }
 
    public void setCenterPixel( int x, int y )
    {
-      setUpperLeftPixel( x - getWidth()/2,
-                         y - getHeight()/2 );
+      locRelative = Location.Center;
+      xLoc = x;
+      yLoc = y;
    }
 
    public void setUpperLeftPixel( int x, int y )
    {
-      System.out.println( "( " + x + ", " + y + " )" );
-      mapImage.setBounds( -x, -y, 
-                          -x + mapWidth, -y + mapHeight );
+      locRelative = Location.UpperLeft;
+      xLoc = x;
+      yLoc = y;
+   }
+
+   private enum Location
+   {
+      UpperLeft, Center
    }
 }

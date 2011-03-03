@@ -27,6 +27,21 @@ public class AccessPoint
       macAddress = a;
    }
 
+   public double getX()
+   {
+      return xLoc;
+   }
+
+   public double getY()
+   {
+      return yLoc;
+   }
+
+   public double getHeight()
+   {
+      return height;
+   }
+
 
    public boolean is( String address )
    {

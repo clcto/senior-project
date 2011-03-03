@@ -16,7 +16,6 @@ public class WifiService extends Service
    private double distance;
    private String macAddress;
    private File csvFile;
-   private EditText macEntry;
 
    @Override
    public IBinder onBind( Intent intent )
