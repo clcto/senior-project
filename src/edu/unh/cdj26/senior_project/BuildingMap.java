@@ -16,6 +16,7 @@ public class BuildingMap extends View
    private Location locRelative;
    private ArrayList<AccessPoint> accessPoints;
 
+      // access points will be passed in
    public BuildingMap( Context c )
    {
       super( c );
