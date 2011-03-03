@@ -13,6 +13,8 @@ public class IndoorLocalization extends Activity
 {
    private ServiceNotificationReceiver receiver;
    private BuildingMap map;
+   
+   private static List<AccessPoint> accessPoints;
 
    /** Called when the activity is first created. */
    @Override
@@ -22,7 +24,14 @@ public class IndoorLocalization extends Activity
 
       map = new BuildingMap( this );
       setContentView( map );
-      map.setCenterPixel( 446, 347);
+      map.setCenterPixel( 446, 347 );
+
+      accessPoints = Collections.synchronizedList(
+         new ArrayList<AccessPoint>() );
+      
+
+      //DEBUG 
+      accessPoints.add( new AccessPoint( 400, 300, 0 ) );
 
       Intent serviceIntent = new Intent( this, WifiService.class );
       startService( serviceIntent );
@@ -58,4 +67,8 @@ public class IndoorLocalization extends Activity
       }
    }
 
+   public static List<AccessPoint> getAPs()
+   {
+      return accessPoints;
+   }
 }

@@ -14,7 +14,6 @@ public class BuildingMap extends View
    private int mapWidth, mapHeight;
    private int xLoc, yLoc;
    private Location locRelative;
-   private ArrayList<AccessPoint> accessPoints;
 
       // access points will be passed in
    public BuildingMap( Context c )
@@ -29,9 +28,6 @@ public class BuildingMap extends View
       mapHeight = bitmap.getHeight();
 
       setUpperLeftPixel( 0, 0 );
-
-      accessPoints = new ArrayList<AccessPoint>();
-      accessPoints.add( new AccessPoint( 340, 340, 2, "" ) );
    }
 
    @Override
@@ -65,7 +61,9 @@ public class BuildingMap extends View
 
       Rect bounds = mapImage.getBounds();
 
-      for( AccessPoint ap : accessPoints )
+      List<AccessPoint> aps = IndoorLocalization.getAPs();
+
+      for( AccessPoint ap : aps )
       {
          double apX = ap.getX(); 
          double apY = ap.getY();
