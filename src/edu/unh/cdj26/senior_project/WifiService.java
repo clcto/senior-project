@@ -82,7 +82,6 @@ public class WifiService extends Service
       public void onReceive( Context c, Intent i )
       {
          new WifiDataProcessor( c, new WifiHandler(), macAddress );
-            
       }
       
       private class WifiHandler extends Handler
