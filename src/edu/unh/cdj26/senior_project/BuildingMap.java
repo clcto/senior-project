@@ -82,10 +82,13 @@ public class BuildingMap extends View
             p.rLineTo( -5, 8 );
 
             canvas.drawPath( p, brush );
-
-
-
          }
+
+         if( ap.hasNewLevel() )
+            canvas.drawCircle( (float) apX + bounds.left,
+                               (float) apY + bounds.top, 
+                               15, 
+                               brush );
       }
    }
 

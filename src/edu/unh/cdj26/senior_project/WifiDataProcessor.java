@@ -30,17 +30,21 @@ public class WifiDataProcessor implements java.lang.Runnable
       WifiManager manager;
       manager = (WifiManager) context.getSystemService( Context.WIFI_SERVICE );
       List<ScanResult> networks = manager.getScanResults();
-      if( networks.size() > 1 )
-      {
-         Message msg = handler.obtainMessage();
-         /* how to send msg back 
-         Bundle b = new Bundle();
-         b.putInt( "level", bestAP.level );
-         b.putString( "mac", bestAP.BSSID );
-         msg.setData( b );
-         */
+      
+      /* debug */
+      if( networks.size() > 0 )
+         networks.get(0).BSSID = "debug_address";
+      
+      List<AccessPoint> aps = IndoorLocalization.getAPs();
 
-         handler.sendMessage( msg );
+      for( ScanResult sr : networks )
+      {
+         for( AccessPoint ap : aps )
+          {
+             if( ap.is( sr.BSSID ) )
+                ap.setLevel( sr.level );
+          }
       }
    }
+
 }

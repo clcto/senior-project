@@ -31,7 +31,7 @@ public class IndoorLocalization extends Activity
       
 
       //DEBUG 
-      accessPoints.add( new AccessPoint( 400, 300, 0 ) );
+      accessPoints.add( new AccessPoint( 400, 300, "debug_address" ) );
 
       Intent serviceIntent = new Intent( this, WifiService.class );
       startService( serviceIntent );
@@ -63,7 +63,9 @@ public class IndoorLocalization extends Activity
       @Override
       public void onReceive( Context context, Intent intent )
       {
-         System.out.println( "Service Notification Receiver receives!" );
+         System.err.println( "Service Notification Receiver receives!" );
+         
+         map.invalidate();
       }
    }
 
