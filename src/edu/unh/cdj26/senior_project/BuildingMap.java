@@ -87,7 +87,7 @@ public class BuildingMap extends View
          if( ap.hasNewLevel() )
          {
             int rss = ap.getLevel();
-            double dist_meter = ( rss + 48 ) / (-2);
+            double dist_meter = ( rss + 49 ) / (-1.84);
 
 
             double h = ap.getHeight();
@@ -107,14 +107,14 @@ public class BuildingMap extends View
 
             
             brush.setColor( 0xFFCC1111 );
-            canvas.drawCircle( (float) apX + bounds.left,
-                               (float) apY + bounds.top, 
-                               (float) rad_l,
+            canvas.drawCircle( (int) apX + bounds.left,
+                               (int) apY + bounds.top, 
+                               (int) rad_l,
                                brush );
 
-            canvas.drawCircle( (float) apX + bounds.left,
-                               (float) apY + bounds.top, 
-                               (float) rad_h,
+            canvas.drawCircle( (int) apX + bounds.left,
+                               (int) apY + bounds.top, 
+                               (int) rad_h,
                                brush );
          }
       }
