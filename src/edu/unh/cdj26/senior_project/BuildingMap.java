@@ -7,13 +7,18 @@ import android.view.*;
 import android.graphics.*;
 import java.util.*;
 
+
 public class BuildingMap extends View
+                         implements GestureDetector.OnGestureListener
 {
 
    private Drawable mapImage;
    private int mapWidth, mapHeight;
    private int xLoc, yLoc;
    private Location locRelative;
+   private GestureDetector gestures;
+   private ArrayList<ActiveAPState> actives;
+   private boolean newWifiData;
 
       // access points will be passed in
    public BuildingMap( Context c )
@@ -28,6 +33,12 @@ public class BuildingMap extends View
       mapHeight = bitmap.getHeight();
 
       setUpperLeftPixel( 0, 0 );
+
+      gestures = new GestureDetector( c, this ); 
+
+      actives = new ArrayList<ActiveAPState>();
+
+      newWifiData = false;
    }
 
    @Override
@@ -53,7 +64,7 @@ public class BuildingMap extends View
       
       Paint brush = new Paint();
       brush.setDither( true );
-      brush.setStyle( Paint.Style.STROKE );
+      brush.setAntiAlias( true );
       brush.setStrokeJoin( Paint.Join.ROUND );
       brush.setStrokeCap( Paint.Cap.ROUND );
       brush.setStrokeWidth( 2 );
@@ -61,6 +72,13 @@ public class BuildingMap extends View
       Rect bounds = mapImage.getBounds();
 
       List<AccessPoint> aps = IndoorLocalization.getAPs();
+      if( newWifiData )
+      {
+         for( AccessPoint ap : aps )
+            ap.saveState();
+
+         newWifiData = false;
+      }
 
       for( AccessPoint ap : aps )
       {
@@ -77,47 +95,70 @@ public class BuildingMap extends View
                       (float) apY + bounds.top + 4 );
             
             p.rLineTo( 10, 0 );
-            p.rLineTo( -5, -8 );
-            p.rLineTo( -5, 8 );
+            p.rLineTo( -5, -10 );
+            p.rLineTo( -5, 10 );
 
             brush.setColor( 0xFF000000 );
+            brush.setStyle( Paint.Style.FILL_AND_STROKE );
             canvas.drawPath( p, brush );
          }
-
-         if( ap.hasNewLevel() )
+         
+         AccessPoint state = ap.getSavedState(); 
+         System.err.println( state );
+         if( state != null && state.hasNewLevel() )
          {
-            int rss = ap.getLevel();
+            System.err.println( " - here " );
+            int rss = state.peekLevel();
             double dist_meter = ( rss + 49 ) / (-1.84);
 
+            double h = state.getHeight();
 
-            double h = ap.getHeight();
-
-            double d_m_low = dist_meter - 6;
+            double d_m_low = dist_meter - 5;
             d_m_low = d_m_low > 0 ? d_m_low : 0 ;
 
             double rad_m_low = Math.sqrt( d_m_low*d_m_low - h*h );
-            double rad_l = rad_m_low * 30 / 2.3;
+            double rad_l = rad_m_low * 20;
 
-            double d_m_high = dist_meter + 6;
+            double d_m_high = dist_meter + 5;
             d_m_high = d_m_high > 0 ? d_m_high : 0 ;
 
             double rad_m_high = Math.sqrt( d_m_high*d_m_high - h*h );
-            double rad_h = rad_m_high * 30 / 2.3;
+            double rad_h = rad_m_high * 20;
 
-
-            
             brush.setColor( 0xFFCC1111 );
-            canvas.drawCircle( (int) apX + bounds.left,
-                               (int) apY + bounds.top, 
-                               (int) rad_l,
+            brush.setStyle( Paint.Style.STROKE );
+            canvas.drawCircle( (float) apX + bounds.left,
+                               (float) apY + bounds.top, 
+                               (float) rad_l,
                                brush );
 
-            canvas.drawCircle( (int) apX + bounds.left,
-                               (int) apY + bounds.top, 
-                               (int) rad_h,
+            canvas.drawCircle( (float) apX + bounds.left,
+                               (float) apY + bounds.top, 
+                               (float) rad_h,
+                               brush );
+
+            brush.setColor( 0x22CC1111 );
+            brush.setStyle( Paint.Style.FILL );
+            canvas.drawCircle( (float) apX + bounds.left,
+                               (float) apY + bounds.top, 
+                               (float) rad_h,
+                               brush );
+
+            brush.setColor( 0x88FFFFFF );
+            brush.setStyle( Paint.Style.FILL );
+            canvas.drawCircle( (float) apX + bounds.left,
+                               (float) apY + bounds.top, 
+                               (float) rad_l,
                                brush );
          }
       }
+   }
+
+   @Override
+   public boolean onTouchEvent( MotionEvent me )
+   {
+      System.out.println( "onScroll ");
+      return gestures.onTouchEvent( me );
    }
 
    public void setCenterPixel( int x, int y )
@@ -137,5 +178,65 @@ public class BuildingMap extends View
    private enum Location
    {
       UpperLeft, Center
+   }
+
+   public void newWifiData()
+   {
+      newWifiData = true;
+      invalidate();
+   }
+
+   @Override
+   public boolean onScroll( MotionEvent me1, MotionEvent me2, float dX, float dY )
+   {
+      System.out.println( "onScroll " + dX + " " + dY );
+      xLoc += dX;
+      yLoc += dY;
+
+      invalidate();
+
+      return true;
+   }
+
+   @Override
+   public boolean onDown( MotionEvent me )
+   {
+      return true;
+   }
+
+   @Override
+   public boolean onFling( MotionEvent me1, MotionEvent me2, float vX, float vY )
+   {
+      return false;
+   }
+
+   @Override
+   public void onLongPress( MotionEvent me )
+   {
+   }
+
+   @Override
+   public void onShowPress( MotionEvent me )
+   {
+   }
+
+   @Override
+   public boolean onSingleTapUp( MotionEvent me )
+   {
+      return false;
+   }
+
+   private class ActiveAPState
+   {
+      public float x_px, y_px, inner, outer;
+
+      public ActiveAPState( float x, float y,
+                            float i, float o )
+      {
+         x_px = x;
+         y_px = y;
+         inner = i;
+         outer = o;
+      }
    }
 }

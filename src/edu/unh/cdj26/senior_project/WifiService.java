@@ -64,7 +64,6 @@ public class WifiService extends Service
          WifiManager wm;
          wm = (WifiManager) getApplicationContext().getSystemService( Context.WIFI_SERVICE );
          wm.startScan();
-//            System.err.println( " ****** >>> here <<<  ****** " );
       }
    }
 
@@ -76,7 +75,6 @@ public class WifiService extends Service
             // probably don't need to create one of these
             // every time... that is the wifihandler
          new WifiDataProcessor( c, new WifiHandler() );
-            System.err.println( " ****** >>> here <<<  ****** " );
       }
       
       private class WifiHandler extends Handler
@@ -85,7 +83,6 @@ public class WifiService extends Service
          public void handleMessage( Message m )
          {
             Bundle info = m.getData();
-            System.err.println( " ------ ****** >>> here <<<  ****** ------" );
             Intent scanDone = new Intent( "WIFI_DATA_PROCESSED" );
             sendBroadcast( scanDone );
 

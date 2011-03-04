@@ -6,6 +6,7 @@ public class AccessPoint
    protected double xLoc, yLoc;
    protected double height;
    protected String macAddress;
+   protected AccessPoint savedState;
 
    protected boolean newLevel;
    protected int level;
@@ -49,7 +50,7 @@ public class AccessPoint
 
    public boolean is( String address )
    {
-      return macAddress.equals( address );
+      return macAddress.equalsIgnoreCase( address );
    }
 
    public boolean equals( AccessPoint ap )
@@ -58,7 +59,7 @@ public class AccessPoint
          this.xLoc == ap.xLoc &&
          this.yLoc == ap.yLoc &&
          this.height == ap.height &&
-         this.macAddress.equals( ap.macAddress );
+         this.macAddress.equalsIgnoreCase( ap.macAddress );
    }
 
    public boolean hasNewLevel()
@@ -109,5 +110,35 @@ public class AccessPoint
          return level;
       else
          return 0;
+   }
+
+   @Override
+   public String toString()
+   {
+      return "( " + xLoc + ", " + yLoc + ", " + height + 
+             ") <" + macAddress + ">";
+   }
+
+   public void saveState()
+   {
+      if( savedState == null )
+         savedState = new AccessPoint( xLoc, yLoc, height,
+                                       macAddress );
+      else
+      {
+         savedState.xLoc = xLoc;
+         savedState.yLoc = yLoc;
+         savedState.height = height;
+         savedState.macAddress = macAddress;
+      }
+
+      savedState.newLevel = newLevel;
+      savedState.level = level;
+      
+   }
+
+   public AccessPoint getSavedState()
+   {
+      return savedState;
    }
 }

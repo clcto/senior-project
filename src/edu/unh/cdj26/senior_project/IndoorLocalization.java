@@ -24,15 +24,20 @@ public class IndoorLocalization extends Activity
 
       map = new BuildingMap( this );
       setContentView( map );
-      map.setCenterPixel( 446, 347 );
+      map.setCenterPixel( 750, 250 );
 
       accessPoints = Collections.synchronizedList(
          new ArrayList<AccessPoint>() );
       
 
       //DEBUG 
-      accessPoints.add( new AccessPoint( 400, 300, "debug_address" ) );
-      accessPoints.add( new AccessPoint( 450, 350, "" ) );
+      accessPoints.add( new AccessPoint( 179, 324, 1.9, "00:1A:E8:14:D2:AB" ) );
+      accessPoints.add( new AccessPoint( 179, 324, 1.9, "00:1A:E8:14:D2:A8" ) );
+      accessPoints.add( new AccessPoint( 179, 324, 1.9, "00:1A:E8:14:D2:A9" ) );
+
+      accessPoints.add( new AccessPoint( 1521, 368.8, 1.9, "00:1F:45:48:38:3B" ) );
+      accessPoints.add( new AccessPoint( 1521, 368.8, 1.9, "00:1F:45:48:38:3A" ) );
+      accessPoints.add( new AccessPoint( 1521, 368.8, 1.9, "00:1F:45:48:38:39" ) );
 
       Intent serviceIntent = new Intent( this, WifiService.class );
       startService( serviceIntent );
@@ -64,9 +69,7 @@ public class IndoorLocalization extends Activity
       @Override
       public void onReceive( Context context, Intent intent )
       {
-         System.err.println( "Service Notification Receiver receives!" );
-         
-         map.invalidate();
+         map.newWifiData();
       }
    }
 

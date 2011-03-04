@@ -31,10 +31,6 @@ public class WifiDataProcessor implements java.lang.Runnable
       manager = (WifiManager) context.getSystemService( Context.WIFI_SERVICE );
       List<ScanResult> networks = manager.getScanResults();
       
-      /* debug */
-      if( networks.size() > 1 )
-         networks.get( 1 ).BSSID = "debug_address";
-      
       List<AccessPoint> aps = IndoorLocalization.getAPs();
 
       for( ScanResult sr : networks )
