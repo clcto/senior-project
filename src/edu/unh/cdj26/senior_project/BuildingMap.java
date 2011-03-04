@@ -52,7 +52,6 @@ public class BuildingMap extends View
       mapImage.draw( canvas );
       
       Paint brush = new Paint();
-      brush.setColor( 0xFF000000 );
       brush.setDither( true );
       brush.setStyle( Paint.Style.STROKE );
       brush.setStrokeJoin( Paint.Join.ROUND );
@@ -81,14 +80,43 @@ public class BuildingMap extends View
             p.rLineTo( -5, -8 );
             p.rLineTo( -5, 8 );
 
+            brush.setColor( 0xFF000000 );
             canvas.drawPath( p, brush );
          }
 
          if( ap.hasNewLevel() )
+         {
+            int rss = ap.getLevel();
+            double dist_meter = ( rss + 48 ) / (-2);
+
+
+            double h = ap.getHeight();
+
+            double d_m_low = dist_meter - 6;
+            d_m_low = d_m_low > 0 ? d_m_low : 0 ;
+
+            double rad_m_low = Math.sqrt( d_m_low*d_m_low - h*h );
+            double rad_l = rad_m_low * 30 / 2.3;
+
+            double d_m_high = dist_meter + 6;
+            d_m_high = d_m_high > 0 ? d_m_high : 0 ;
+
+            double rad_m_high = Math.sqrt( d_m_high*d_m_high - h*h );
+            double rad_h = rad_m_high * 30 / 2.3;
+
+
+            
+            brush.setColor( 0xFFCC1111 );
             canvas.drawCircle( (float) apX + bounds.left,
                                (float) apY + bounds.top, 
-                               15, 
+                               (float) rad_l,
                                brush );
+
+            canvas.drawCircle( (float) apX + bounds.left,
+                               (float) apY + bounds.top, 
+                               (float) rad_h,
+                               brush );
+         }
       }
    }
 

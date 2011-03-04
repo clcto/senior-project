@@ -84,12 +84,16 @@ public class AccessPoint
     */
    public int getLevel()
    {
-      newLevel = false;
+      int retVal;
 
       if( newLevel )
-         return level;
+         retVal = level;
       else
-         return 0;
+         retVal = 0;
+
+      newLevel = false;
+
+      return retVal;
    }
 
    /**

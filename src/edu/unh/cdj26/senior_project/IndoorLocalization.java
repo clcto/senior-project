@@ -32,6 +32,7 @@ public class IndoorLocalization extends Activity
 
       //DEBUG 
       accessPoints.add( new AccessPoint( 400, 300, "debug_address" ) );
+      accessPoints.add( new AccessPoint( 450, 350, "" ) );
 
       Intent serviceIntent = new Intent( this, WifiService.class );
       startService( serviceIntent );

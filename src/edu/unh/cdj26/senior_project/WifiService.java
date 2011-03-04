@@ -64,7 +64,7 @@ public class WifiService extends Service
          WifiManager wm;
          wm = (WifiManager) getApplicationContext().getSystemService( Context.WIFI_SERVICE );
          wm.startScan();
-            System.err.println( " ****** >>> here <<<  ****** " );
+//            System.err.println( " ****** >>> here <<<  ****** " );
       }
    }
 

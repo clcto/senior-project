@@ -32,8 +32,8 @@ public class WifiDataProcessor implements java.lang.Runnable
       List<ScanResult> networks = manager.getScanResults();
       
       /* debug */
-      if( networks.size() > 0 )
-         networks.get(0).BSSID = "debug_address";
+      if( networks.size() > 3 )
+         networks.get( 3 ).BSSID = "debug_address";
       
       List<AccessPoint> aps = IndoorLocalization.getAPs();
 
@@ -45,6 +45,8 @@ public class WifiDataProcessor implements java.lang.Runnable
                 ap.setLevel( sr.level );
           }
       }
+
+      handler.sendMessage( handler.obtainMessage() );
    }
 
 }
