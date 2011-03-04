@@ -19,11 +19,8 @@ public class IndoorLocalization extends Activity
    {
       super.onCreate(savedInstanceState);
 
-      BuildingMap map = new BuildingMap( this );
-      setContentView( map );
-      map.setCenterPixel( 446, 347);
+      setContentView( R.layout.wifi_data );
 
-      /*
       Button submit = (Button) findViewById( R.id.record_button );
       submit.setOnClickListener( 
          new View.OnClickListener()
@@ -42,7 +39,6 @@ public class IndoorLocalization extends Activity
                go();
             }
          } );
-      */
    }
 
    private void go()
