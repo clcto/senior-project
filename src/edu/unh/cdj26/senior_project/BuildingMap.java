@@ -38,7 +38,7 @@ public class BuildingMap extends View
 
       setUpperLeftPixel( 0, 0 );
 
-      //gestures = new GestureDetector( c, this ); 
+      gestures = new GestureDetector( c, this ); 
       scaleDetector = new ScaleGestureDetector( c, this );
 
 
@@ -165,7 +165,25 @@ public class BuildingMap extends View
    @Override
    public boolean onTouchEvent( MotionEvent me )
    {
-      return scaleDetector.onTouchEvent( me );
+      scaleDetector.onTouchEvent( me );
+
+      if( scaleDetector.isInProgress() )
+         return true;
+
+      //gestures.onTouchEvent(me);
+      switch( me.getAction() )
+      {
+         case MotionEvent.ACTION_UP:
+            Rect bounds = mapImage.getBounds();
+
+            float x = -bounds.left + me.getX();
+            float y = -bounds.top + me.getY();
+            System.err.println( x + ", " +  y );
+            setCenterPixel( (int)x, (int)y );
+            break;
+      }
+
+      return true;
       //return gestures.onTouchEvent( me );
    }
 
@@ -174,6 +192,7 @@ public class BuildingMap extends View
       locRelative = Location.Center;
       xLoc = x;
       yLoc = y;
+      invalidate();
    }
 
    public void setUpperLeftPixel( int x, int y )
@@ -181,6 +200,7 @@ public class BuildingMap extends View
       locRelative = Location.UpperLeft;
       xLoc = x;
       yLoc = y;
+      invalidate();
    }
 
    private enum Location
@@ -240,6 +260,8 @@ public class BuildingMap extends View
       scaleFactor *= sgd.getScaleFactor();
       setCenterPixel( Math.round(sgd.getFocusX()), 
                       Math.round(sgd.getFocusY()) );
+
+      System.err.println( sgd.getFocusX() + ", " + sgd.getFocusY() );
       
       invalidate();
       return true;
