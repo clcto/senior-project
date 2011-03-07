@@ -9,7 +9,9 @@ import java.util.*;
 
 
 public class BuildingMap extends View
-                         implements GestureDetector.OnGestureListener
+               implements GestureDetector.OnGestureListener,
+                          ScaleGestureDetector.OnScaleGestureListener
+                        
 {
 
    private Drawable mapImage;
@@ -17,8 +19,10 @@ public class BuildingMap extends View
    private int xLoc, yLoc;
    private Location locRelative;
    private GestureDetector gestures;
+   private ScaleGestureDetector scaleDetector;
    private ArrayList<ActiveAPState> actives;
    private boolean newWifiData;
+   private float scaleFactor = 1;
 
       // access points will be passed in
    public BuildingMap( Context c )
@@ -34,7 +38,9 @@ public class BuildingMap extends View
 
       setUpperLeftPixel( 0, 0 );
 
-      gestures = new GestureDetector( c, this ); 
+      //gestures = new GestureDetector( c, this ); 
+      scaleDetector = new ScaleGestureDetector( c, this );
+
 
       actives = new ArrayList<ActiveAPState>();
 
@@ -45,6 +51,8 @@ public class BuildingMap extends View
    protected void onDraw( Canvas canvas )
    {
       super.onDraw( canvas );
+      canvas.save();
+      canvas.scale( scaleFactor, scaleFactor );
 
       switch( locRelative )
       {
@@ -104,10 +112,9 @@ public class BuildingMap extends View
          }
          
          AccessPoint state = ap.getSavedState(); 
-         System.err.println( state );
+
          if( state != null && state.hasNewLevel() )
          {
-            System.err.println( " - here " );
             int rss = state.peekLevel();
             double dist_meter = ( rss + 49 ) / (-1.84);
 
@@ -152,13 +159,14 @@ public class BuildingMap extends View
                                brush );
          }
       }
+      canvas.restore();
    }
 
    @Override
    public boolean onTouchEvent( MotionEvent me )
    {
-      System.out.println( "onScroll ");
-      return gestures.onTouchEvent( me );
+      return scaleDetector.onTouchEvent( me );
+      //return gestures.onTouchEvent( me );
    }
 
    public void setCenterPixel( int x, int y )
@@ -224,6 +232,28 @@ public class BuildingMap extends View
    public boolean onSingleTapUp( MotionEvent me )
    {
       return false;
+   }
+
+   @Override
+   public boolean onScale( ScaleGestureDetector sgd )
+   {
+      scaleFactor *= sgd.getScaleFactor();
+      setCenterPixel( Math.round(sgd.getFocusX()), 
+                      Math.round(sgd.getFocusY()) );
+      
+      invalidate();
+      return true;
+   }
+
+   @Override
+   public boolean onScaleBegin( ScaleGestureDetector sgd )
+   {
+      return true;
+   }
+
+   @Override
+   public void onScaleEnd( ScaleGestureDetector sgd )
+   {
    }
 
    private class ActiveAPState
