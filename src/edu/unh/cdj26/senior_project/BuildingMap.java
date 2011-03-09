@@ -126,6 +126,10 @@ public class BuildingMap extends View
       brush.setColor( 0x55DD7700 );
       brush.setStyle( Paint.Style.FILL );
       canvas.drawPath( p, brush );
+      
+      brush.setColor( 0xFFFFFF00 );
+      brush.setStyle( Paint.Style.STROKE );
+      canvas.drawCircle( ap_x, ap_y, 50 * scale, brush );
 
 
      /* REMOVE CODE TO DRAW CIRCLES -----------------------
@@ -327,36 +331,31 @@ public class BuildingMap extends View
    @Override
    public boolean onScale( ScaleGestureDetector sgd )
    {
-      /*
       float foc_x = sgd.getFocusX();
       float foc_y = sgd.getFocusY();
-      
+
+      /* 
       float foc_x_ave = ( foc_x_old + foc_x ) / 2;
       float foc_y_ave = ( foc_y_old + foc_y ) / 2;
 
       foc_x_old = foc_x;
       foc_y_old = foc_y;
-      */
       float bx = mapImage.getBounds().left;
       float by = mapImage.getBounds().top;
 
-      float fx = foc_x_old;
       float fy = foc_y_old;
 
       float newX = (fx-bx)/scale;
       float newY = (fy-by)/scale;
-      System.err.println( "onScale\n  focus = ( " + fx + ", " + fx + " )" );
-      System.err.println( "  bound = ( " + bx + ", " + by + " )" );
+      */
 
-      System.err.println( "  scale = " + scale );
 
       scale *= sgd.getScaleFactor();
 
       scale = Math.max( 0.25f, Math.min( scale, 1.0f ) );
 
-      System.err.println( "  upperleft = ( " + newX + ", " + newY + " )" );
       System.err.println();
-      setPixelRelativeTo( fx, fy, newX, newY );
+      setPixelRelativeTo( foc_x, foc_y, foc_x_old, foc_y_old );
 
       return true;
    }
@@ -366,6 +365,13 @@ public class BuildingMap extends View
    {
       foc_x_old = sgd.getFocusX();
       foc_y_old = sgd.getFocusY();
+
+      foc_x_old -= mapImage.getBounds().left;
+      foc_y_old -= mapImage.getBounds().top;
+
+      foc_x_old /= scale;
+      foc_y_old /= scale;
+
       return true;
    }
 
