@@ -16,13 +16,16 @@ public class BuildingMap extends View
 
    private Drawable mapImage;
    private int mapWidth, mapHeight;
-   private int xLoc, yLoc;
+   private float xLoc, yLoc;
+   private float xScreen, yScreen;
    private Location locRelative;
    private GestureDetector gestures;
    private ScaleGestureDetector scaleDetector;
    private ArrayList<ActiveAPState> actives;
    private boolean newWifiData;
-   private float scaleFactor = 1;
+   private float scale;
+
+   private float foc_x_old, foc_y_old;
 
       // access points will be passed in
    public BuildingMap( Context c )
@@ -45,6 +48,8 @@ public class BuildingMap extends View
       actives = new ArrayList<ActiveAPState>();
 
       newWifiData = false;
+
+      scale = 0.5f;
    }
 
    @Override
@@ -52,24 +57,37 @@ public class BuildingMap extends View
    {
       super.onDraw( canvas );
       canvas.save();
-      canvas.scale( scaleFactor, scaleFactor );
 
+      float x, y;
       switch( locRelative )
       {
          case UpperLeft:
-            mapImage.setBounds( -xLoc, -yLoc, 
-                  -xLoc + mapWidth, -yLoc + mapHeight );
+            mapImage.setBounds( (int) (-xLoc * scale),
+                                (int) (-yLoc * scale), 
+                                (int) ((-xLoc + mapWidth)  * scale), 
+                                (int) ((-yLoc + mapHeight) * scale) );
             break;
          case Center:
-            int x = xLoc - getWidth()/2;
-            int y = yLoc - getHeight()/2;
-            mapImage.setBounds( -x, -y, 
-                  -x + mapWidth, -y + mapHeight );
+            x = xLoc - getWidth()/(2*scale);
+            y = yLoc - getHeight()/(2*scale);
+            mapImage.setBounds( (int) (-x * scale), 
+                                (int) (-y * scale),
+                                (int) ((-x + mapWidth)  * scale),
+                                (int) ((-y + mapHeight) * scale) );
+            break;
+         case Pixel:
+            x = xLoc - xScreen/scale;
+            y = yLoc - yScreen/scale;
+            mapImage.setBounds( (int) (-x * scale), 
+                                (int) (-y * scale),
+                                (int) ((-x + mapWidth)  * scale),
+                                (int) ((-y + mapHeight) * scale) );
             break;
       }
 
       mapImage.draw( canvas );
-      
+     
+     
       Paint brush = new Paint();
       brush.setDither( true );
       brush.setAntiAlias( true );
@@ -78,7 +96,42 @@ public class BuildingMap extends View
       brush.setStrokeWidth( 2 );
 
       Rect bounds = mapImage.getBounds();
+      
+      float ap_x, ap_y;
+      
+      ap_x = 464;
+      ap_y = 761;
+           // test numbers
 
+
+
+      //    for each access point do this
+         
+      ap_x *= scale;
+      ap_y *= scale;
+      
+      ap_x += bounds.left;
+      ap_y += bounds.top;
+
+      Path p = new Path();
+      p.moveTo( ap_x - 5, ap_y + 4 );
+      p.rLineTo( 10, 0 );
+      p.rLineTo( -5, -10 );
+      p.rLineTo( -5, 10 );
+
+      brush.setColor( 0xFFDD7700 );
+      brush.setStyle( Paint.Style.STROKE );
+      canvas.drawPath( p, brush );
+   
+      brush.setColor( 0x55DD7700 );
+      brush.setStyle( Paint.Style.FILL );
+      canvas.drawPath( p, brush );
+
+
+     /* REMOVE CODE TO DRAW CIRCLES -----------------------
+      *
+      *
+      
       List<AccessPoint> aps = IndoorLocalization.getAPs();
       if( newWifiData )
       {
@@ -159,6 +212,9 @@ public class BuildingMap extends View
                                brush );
          }
       }
+      */
+
+
       canvas.restore();
    }
 
@@ -170,24 +226,26 @@ public class BuildingMap extends View
       if( scaleDetector.isInProgress() )
          return true;
 
-      //gestures.onTouchEvent(me);
+      gestures.onTouchEvent(me);
       switch( me.getAction() )
       {
+         /* No longer need action up moves to center of screen
          case MotionEvent.ACTION_UP:
             Rect bounds = mapImage.getBounds();
 
-            float x = -bounds.left + me.getX();
-            float y = -bounds.top + me.getY();
+            float x = (me.getX() - bounds.left) / scale;
+            float y = (me.getY() - bounds.top) / scale;
             System.err.println( x + ", " +  y );
             setCenterPixel( (int)x, (int)y );
             break;
+          */
       }
 
       return true;
       //return gestures.onTouchEvent( me );
    }
 
-   public void setCenterPixel( int x, int y )
+   public void setCenterPixel( float x, float y )
    {
       locRelative = Location.Center;
       xLoc = x;
@@ -195,17 +253,29 @@ public class BuildingMap extends View
       invalidate();
    }
 
-   public void setUpperLeftPixel( int x, int y )
+   public void setUpperLeftPixel( float x, float y )
    {
       locRelative = Location.UpperLeft;
       xLoc = x;
       yLoc = y;
       invalidate();
    }
+   
+   public void setPixelRelativeTo( float sX, float sY, float pX, float pY )
+   {
+      locRelative = Location.Pixel;
+      xScreen = sX;
+      yScreen = sY;
+
+      xLoc = pX;
+      yLoc = pY;
+
+      invalidate();
+   }
 
    private enum Location
    {
-      UpperLeft, Center
+      UpperLeft, Center, Pixel
    }
 
    public void newWifiData()
@@ -218,8 +288,8 @@ public class BuildingMap extends View
    public boolean onScroll( MotionEvent me1, MotionEvent me2, float dX, float dY )
    {
       System.out.println( "onScroll " + dX + " " + dY );
-      xLoc += dX;
-      yLoc += dY;
+      xLoc += dX/scale;
+      yLoc += dY/scale;
 
       invalidate();
 
@@ -257,19 +327,45 @@ public class BuildingMap extends View
    @Override
    public boolean onScale( ScaleGestureDetector sgd )
    {
-      scaleFactor *= sgd.getScaleFactor();
-      setCenterPixel( Math.round(sgd.getFocusX()), 
-                      Math.round(sgd.getFocusY()) );
-
-      System.err.println( sgd.getFocusX() + ", " + sgd.getFocusY() );
+      /*
+      float foc_x = sgd.getFocusX();
+      float foc_y = sgd.getFocusY();
       
-      invalidate();
+      float foc_x_ave = ( foc_x_old + foc_x ) / 2;
+      float foc_y_ave = ( foc_y_old + foc_y ) / 2;
+
+      foc_x_old = foc_x;
+      foc_y_old = foc_y;
+      */
+      float bx = mapImage.getBounds().left;
+      float by = mapImage.getBounds().top;
+
+      float fx = foc_x_old;
+      float fy = foc_y_old;
+
+      float newX = (fx-bx)/scale;
+      float newY = (fy-by)/scale;
+      System.err.println( "onScale\n  focus = ( " + fx + ", " + fx + " )" );
+      System.err.println( "  bound = ( " + bx + ", " + by + " )" );
+
+      System.err.println( "  scale = " + scale );
+
+      scale *= sgd.getScaleFactor();
+
+      scale = Math.max( 0.25f, Math.min( scale, 1.0f ) );
+
+      System.err.println( "  upperleft = ( " + newX + ", " + newY + " )" );
+      System.err.println();
+      setPixelRelativeTo( fx, fy, newX, newY );
+
       return true;
    }
 
    @Override
    public boolean onScaleBegin( ScaleGestureDetector sgd )
    {
+      foc_x_old = sgd.getFocusX();
+      foc_y_old = sgd.getFocusY();
       return true;
    }
 

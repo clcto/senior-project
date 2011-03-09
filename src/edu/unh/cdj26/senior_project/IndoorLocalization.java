@@ -24,7 +24,7 @@ public class IndoorLocalization extends Activity
 
       map = new BuildingMap( this );
       setContentView( map );
-      map.setCenterPixel( 750, 250 );
+      map.setUpperLeftPixel( 0, 0 );
 
       accessPoints = Collections.synchronizedList(
          new ArrayList<AccessPoint>() );
