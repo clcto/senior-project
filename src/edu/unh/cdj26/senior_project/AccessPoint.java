@@ -3,8 +3,8 @@ package edu.unh.cdj26.senior_project;
 
 public class AccessPoint
 {
-   protected double xLoc, yLoc;
-   protected double height;
+   protected float xLoc, yLoc;
+   protected float height;
    protected String macAddress;
    protected AccessPoint savedState;
 
@@ -16,12 +16,12 @@ public class AccessPoint
       this( 0, 0, 0, mac );
    }
 
-   public AccessPoint( double x, double y, String mac )
+   public AccessPoint( float x, float y, String mac )
    {
       this( x, y, 0, mac );
    }
 
-   public AccessPoint( double x, double y, double h,
+   public AccessPoint( float x, float y, float h,
                        String a )
    {
       xLoc = x;
@@ -32,17 +32,17 @@ public class AccessPoint
       newLevel = false;
    }
 
-   public double getX()
+   public float getX()
    {
       return xLoc;
    }
 
-   public double getY()
+   public float getY()
    {
       return yLoc;
    }
 
-   public double getHeight()
+   public float getHeight()
    {
       return height;
    }

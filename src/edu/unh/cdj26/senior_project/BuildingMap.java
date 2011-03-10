@@ -97,45 +97,6 @@ public class BuildingMap extends View
 
       Rect bounds = mapImage.getBounds();
       
-      float ap_x, ap_y;
-      
-      ap_x = 464;
-      ap_y = 761;
-           // test numbers
-
-
-
-      //    for each access point do this
-         
-      ap_x *= scale;
-      ap_y *= scale;
-      
-      ap_x += bounds.left;
-      ap_y += bounds.top;
-
-      Path p = new Path();
-      p.moveTo( ap_x - 5, ap_y + 4 );
-      p.rLineTo( 10, 0 );
-      p.rLineTo( -5, -10 );
-      p.rLineTo( -5, 10 );
-
-      brush.setColor( 0xFFDD7700 );
-      brush.setStyle( Paint.Style.STROKE );
-      canvas.drawPath( p, brush );
-   
-      brush.setColor( 0x55DD7700 );
-      brush.setStyle( Paint.Style.FILL );
-      canvas.drawPath( p, brush );
-      
-      brush.setColor( 0xFFFFFF00 );
-      brush.setStyle( Paint.Style.STROKE );
-      canvas.drawCircle( ap_x, ap_y, 50 * scale, brush );
-
-
-     /* REMOVE CODE TO DRAW CIRCLES -----------------------
-      *
-      *
-      
       List<AccessPoint> aps = IndoorLocalization.getAPs();
       if( newWifiData )
       {
@@ -147,33 +108,39 @@ public class BuildingMap extends View
 
       for( AccessPoint ap : aps )
       {
-         double apX = ap.getX(); 
-         double apY = ap.getY();
+         float apX = ap.getX(); 
+         float apY = ap.getY();
 
-         if(  apX + bounds.left >= 0 &&
-              apX + bounds.left <= getWidth() &&
-              apY + bounds.top  >= 0 && 
-              apY + bounds.top  <= getHeight() )
-         {
-            Path p = new Path();
-            p.moveTo( (float) apX + bounds.left - 5, 
-                      (float) apY + bounds.top + 4 );
-            
-            p.rLineTo( 10, 0 );
-            p.rLineTo( -5, -10 );
-            p.rLineTo( -5, 10 );
-
-            brush.setColor( 0xFF000000 );
-            brush.setStyle( Paint.Style.FILL_AND_STROKE );
-            canvas.drawPath( p, brush );
-         }
+         apX *= scale;
+         apY *= scale;
          
+         apX += bounds.left;
+         apY += bounds.top;
+
+         Path p = new Path();
+         p.moveTo( apX - 5, apY + 4 );
+         p.rLineTo( 10, 0 );
+         p.rLineTo( -5, -10 );
+         p.rLineTo( -5, 10 );
+
+         brush.setColor( 0xFFDD7700 );
+         brush.setStyle( Paint.Style.STROKE );
+         canvas.drawPath( p, brush );
+      
+         brush.setColor( 0x55DD7700 );
+         brush.setStyle( Paint.Style.FILL );
+         canvas.drawPath( p, brush );
+        
          AccessPoint state = ap.getSavedState(); 
 
          if( state != null && state.hasNewLevel() )
          {
             int rss = state.peekLevel();
-            double dist_meter = ( rss + 49 ) / (-1.84);
+
+            double dist_meter = Math.pow( 10, ( rss + 40 ) / (-30.6) );
+
+
+            System.err.println( "rss: " + rss + "  d (m): " + dist_meter );
 
             double h = state.getHeight();
 
@@ -181,42 +148,41 @@ public class BuildingMap extends View
             d_m_low = d_m_low > 0 ? d_m_low : 0 ;
 
             double rad_m_low = Math.sqrt( d_m_low*d_m_low - h*h );
-            double rad_l = rad_m_low * 20;
+            double rad_l = rad_m_low * 33.1 * scale;
 
             double d_m_high = dist_meter + 5;
             d_m_high = d_m_high > 0 ? d_m_high : 0 ;
 
             double rad_m_high = Math.sqrt( d_m_high*d_m_high - h*h );
-            double rad_h = rad_m_high * 20;
+            double rad_h = rad_m_high * 33.1 * scale;
 
             brush.setColor( 0xFFCC1111 );
             brush.setStyle( Paint.Style.STROKE );
-            canvas.drawCircle( (float) apX + bounds.left,
-                               (float) apY + bounds.top, 
+            canvas.drawCircle( (float) apX,
+                               (float) apY, 
                                (float) rad_l,
                                brush );
 
-            canvas.drawCircle( (float) apX + bounds.left,
-                               (float) apY + bounds.top, 
+            canvas.drawCircle( (float) apX,
+                               (float) apY, 
                                (float) rad_h,
                                brush );
 
             brush.setColor( 0x22CC1111 );
             brush.setStyle( Paint.Style.FILL );
-            canvas.drawCircle( (float) apX + bounds.left,
-                               (float) apY + bounds.top, 
+            canvas.drawCircle( (float) apX,
+                               (float) apY, 
                                (float) rad_h,
                                brush );
 
             brush.setColor( 0x88FFFFFF );
             brush.setStyle( Paint.Style.FILL );
-            canvas.drawCircle( (float) apX + bounds.left,
-                               (float) apY + bounds.top, 
+            canvas.drawCircle( (float) apX,
+                               (float) apY, 
                                (float) rad_l,
                                brush );
          }
       }
-      */
 
 
       canvas.restore();
