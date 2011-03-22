@@ -69,7 +69,10 @@ public class IndoorLocalization extends Activity
       @Override
       public void onReceive( Context context, Intent intent )
       {
-         map.newWifiData();
+         float x = intent.getFloatExtra( "x", -1 );
+         float y = intent.getFloatExtra( "y", -1 );
+         Toast.makeText( getApplicationContext(), "( " + x + ", " + y + " )", Toast.LENGTH_LONG ).show();
+         map.newWifiData( x, y );
       }
    }
 

@@ -84,6 +84,8 @@ public class WifiService extends Service
          {
             Bundle info = m.getData();
             Intent scanDone = new Intent( "WIFI_DATA_PROCESSED" );
+            scanDone.putExtra( "x", info.getFloat( "x" ) );
+            scanDone.putExtra( "y", info.getFloat( "y" ) );
             sendBroadcast( scanDone );
 
                // tell the wifiservice to stop. we only

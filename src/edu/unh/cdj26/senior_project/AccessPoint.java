@@ -1,6 +1,8 @@
 
 package edu.unh.cdj26.senior_project;
 
+import android.graphics.PointF;
+
 public class AccessPoint
 {
    protected float xLoc, yLoc;
@@ -10,6 +12,8 @@ public class AccessPoint
 
    protected boolean newLevel;
    protected int level;
+
+   protected float rad_m;
 
    public AccessPoint( String mac )
    {
@@ -73,6 +77,9 @@ public class AccessPoint
    public void setLevel( int l )
    {
       level = l;
+
+      rad_m = (float) Math.pow( 10, (level+47)/-27.5 );
+
       newLevel = true;
    }
 
@@ -112,6 +119,28 @@ public class AccessPoint
          return 0;
    }
 
+   public float getEstimatedRadiusPixels()
+   {
+      float retVal;
+
+      retVal = BuildingMap.metersToPixels( newLevel ? rad_m : 0 );
+
+      newLevel = false;
+
+      return retVal;
+   }
+
+   public float peekEstimatedRadiusPixels()
+   {
+      return BuildingMap.metersToPixels( newLevel ? rad_m : 0 );
+   }
+
+   public float distanceFromPixels( PointF p )
+   {
+      return (float) Math.sqrt( Math.pow( p.x - xLoc, 2 ) +
+                                Math.pow( p.y - yLoc, 2 ) );
+   }
+
    @Override
    public String toString()
    {
@@ -134,6 +163,8 @@ public class AccessPoint
 
       savedState.newLevel = newLevel;
       savedState.level = level;
+
+      savedState.rad_m = rad_m;
       
    }
 

@@ -24,6 +24,7 @@ public class BuildingMap extends View
    private ArrayList<ActiveAPState> actives;
    private boolean newWifiData;
    private float scale;
+   private PointF userLocation;
 
    private float foc_x_old, foc_y_old;
 
@@ -48,7 +49,6 @@ public class BuildingMap extends View
       actives = new ArrayList<ActiveAPState>();
 
       newWifiData = false;
-
       scale = 0.5f;
    }
 
@@ -132,56 +132,48 @@ public class BuildingMap extends View
          canvas.drawPath( p, brush );
         
          AccessPoint state = ap.getSavedState(); 
-
+         boolean debugTemp = true;
          if( state != null && state.hasNewLevel() )
          {
+            /*
             int rss = state.peekLevel();
 
-            double dist_meter = Math.pow( 10, ( rss + 40 ) / (-30.6) );
-
-
-            System.err.println( "rss: " + rss + "  d (m): " + dist_meter );
+            double d_m = Math.pow( 10, ( rss + 47 ) / (-27.5) );
 
             double h = state.getHeight();
 
-            double d_m_low = dist_meter - 5;
-            d_m_low = d_m_low > 0 ? d_m_low : 0 ;
+            double rad_m = Math.sqrt( d_m*d_m - h*h );
+            double rad_p = rad_m * 33.1 * scale;
 
-            double rad_m_low = Math.sqrt( d_m_low*d_m_low - h*h );
-            double rad_l = rad_m_low * 33.1 * scale;
+            if( debugTemp )
+            {
 
-            double d_m_high = dist_meter + 5;
-            d_m_high = d_m_high > 0 ? d_m_high : 0 ;
+               System.err.println( " --- " );
+               System.err.println( "rss:      " + rss );
+               System.err.println( "distance: " + d_m );
+               System.err.println( "radius:   " + rad_m );
 
-            double rad_m_high = Math.sqrt( d_m_high*d_m_high - h*h );
-            double rad_h = rad_m_high * 33.1 * scale;
+               debugTemp = false;
 
-            brush.setColor( 0xFFCC1111 );
+            }
+
+            brush.setColor( 0x44CC1111 );
             brush.setStyle( Paint.Style.STROKE );
             canvas.drawCircle( (float) apX,
                                (float) apY, 
-                               (float) rad_l,
+                               (float) rad_p,
                                brush );
-
-            canvas.drawCircle( (float) apX,
-                               (float) apY, 
-                               (float) rad_h,
-                               brush );
-
-            brush.setColor( 0x22CC1111 );
-            brush.setStyle( Paint.Style.FILL );
-            canvas.drawCircle( (float) apX,
-                               (float) apY, 
-                               (float) rad_h,
-                               brush );
-
-            brush.setColor( 0x88FFFFFF );
-            brush.setStyle( Paint.Style.FILL );
-            canvas.drawCircle( (float) apX,
-                               (float) apY, 
-                               (float) rad_l,
-                               brush );
+            */
          }
+      }
+
+      if( userLocation != null )
+      {
+         brush.setColor( 0xFF2222CC );
+         brush.setStyle( Paint.Style.FILL );
+         canvas.drawCircle( userLocation.x * scale + bounds.left, 
+                            userLocation.y * scale + bounds.top,
+                            4, brush );
       }
 
 
@@ -248,16 +240,16 @@ public class BuildingMap extends View
       UpperLeft, Center, Pixel
    }
 
-   public void newWifiData()
+   public void newWifiData( float x, float y )
    {
       newWifiData = true;
+      userLocation = new PointF( x, y );
       invalidate();
    }
 
    @Override
    public boolean onScroll( MotionEvent me1, MotionEvent me2, float dX, float dY )
    {
-      System.out.println( "onScroll " + dX + " " + dY );
       xLoc += dX/scale;
       yLoc += dY/scale;
 
@@ -320,7 +312,6 @@ public class BuildingMap extends View
 
       scale = Math.max( 0.25f, Math.min( scale, 1.0f ) );
 
-      System.err.println();
       setPixelRelativeTo( foc_x, foc_y, foc_x_old, foc_y_old );
 
       return true;
@@ -344,6 +335,11 @@ public class BuildingMap extends View
    @Override
    public void onScaleEnd( ScaleGestureDetector sgd )
    {
+   }
+
+   public static float metersToPixels( float meters )
+   {
+      return meters * 33.1f;
    }
 
    private class ActiveAPState
