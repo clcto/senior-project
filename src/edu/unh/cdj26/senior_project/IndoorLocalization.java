@@ -31,13 +31,25 @@ public class IndoorLocalization extends Activity
       
 
       //DEBUG 
-      accessPoints.add( new AccessPoint( 465, 757, 1.9f, "00:1A:E8:14:D2:AB" ) );
-      accessPoints.add( new AccessPoint( 465, 757, 1.9f, "00:1A:E8:14:D2:A8" ) );
-      accessPoints.add( new AccessPoint( 465, 757, 1.9f, "00:1A:E8:14:D2:A9" ) );
+      AccessPoint ap;
 
-      accessPoints.add( new AccessPoint( 2708, 823, 1.9f, "00:1F:45:48:38:3B" ) );
-      accessPoints.add( new AccessPoint( 2708, 823, 1.9f, "00:1F:45:48:38:3A" ) );
-      accessPoints.add( new AccessPoint( 2708, 823.8f, 1.9f, "00:1F:45:48:38:39" ) );
+      ap = new AccessPoint( 1616, 856, 1.9f, 35, 35 );
+      ap.addMAC( "00:1F:45:48:3E:49" ).addMAC( "00:1F:45:48:3E:48" ).addMAC( "00:1F:45:48:3E:4B" );
+      accessPoints.add( ap );
+
+      ap = new AccessPoint( 465, 757, 1.9f, 35, 35 );
+      ap.addMAC( "00:1A:E8:14:D2:AB" ).addMAC( "00:1A:E8:14:D2:A8" ).addMAC( "00:1A:E8:14:D2:A9" );
+      accessPoints.add( ap );
+
+      ap = new AccessPoint( 2708, 823, 1.9f, 35, 35 );
+      ap.addMAC( "00:1F:45:48:38:3B" ).addMAC( "00:1F:45:48:38:3A" ).addMAC( "00:1F:45:48:38:39" );
+      accessPoints.add( ap );
+
+
+      ap = new AccessPoint( 30, 930, 1, 50, 32 );
+      ap.addMAC( "00:01:F4:5B:78:36" );
+      accessPoints.add( ap );
+
 
       Intent serviceIntent = new Intent( this, WifiService.class );
       startService( serviceIntent );
@@ -71,8 +83,10 @@ public class IndoorLocalization extends Activity
       {
          float x = intent.getFloatExtra( "x", -1 );
          float y = intent.getFloatExtra( "y", -1 );
-         Toast.makeText( getApplicationContext(), "( " + x + ", " + y + " )", Toast.LENGTH_LONG ).show();
-         map.newWifiData( x, y );
+         float r = intent.getFloatExtra( "radius", -1 );
+         System.out.println( "cdj26 -- r: " + r );
+         //Toast.makeText( getApplicationContext(), "( " + x + ", " + y + " )", Toast.LENGTH_LONG ).show();
+         map.newWifiData( x, y, r );
       }
    }
 

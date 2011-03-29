@@ -2,38 +2,42 @@
 package edu.unh.cdj26.senior_project;
 
 import android.graphics.PointF;
+import java.util.*;
 
 public class AccessPoint
 {
-   protected float xLoc, yLoc;
-   protected float height;
-   protected String macAddress;
-   protected AccessPoint savedState;
-
-   protected boolean newLevel;
-   protected int level;
+   protected float xLoc, yLoc; // pixels
+   protected float height; // meters
+   protected List<String> macs;
+   //protected AccessPoint savedState;
 
    protected float rad_m;
 
-   public AccessPoint( String mac )
+   float rxPower0;
+   float exponent;
+
+   private int numRx;
+   private float rssAvg;
+
+   public AccessPoint()
    {
-      this( 0, 0, 0, mac );
+      this( 0, 0, 0, 0, 0 );
    }
 
-   public AccessPoint( float x, float y, String mac )
-   {
-      this( x, y, 0, mac );
-   }
-
-   public AccessPoint( float x, float y, float h,
-                       String a )
+   public AccessPoint( float x, float y, float h, float p0, float n )
    {
       xLoc = x;
       yLoc = y;
       height = h;
-      macAddress = a;
 
-      newLevel = false;
+      numRx = 0;
+      rssAvg = 0;
+      
+      rxPower0 = p0;
+      exponent = n;
+
+      macs = new ArrayList<String>();
+
    }
 
    public float getX()
@@ -52,9 +56,9 @@ public class AccessPoint
    }
 
 
-   public boolean is( String address )
+   public boolean hasMAC( String address )
    {
-      return macAddress.equalsIgnoreCase( address );
+      return macs.contains( address.toLowerCase() );
    }
 
    public boolean equals( AccessPoint ap )
@@ -62,77 +66,42 @@ public class AccessPoint
       return
          this.xLoc == ap.xLoc &&
          this.yLoc == ap.yLoc &&
-         this.height == ap.height &&
-         this.macAddress.equalsIgnoreCase( ap.macAddress );
+         this.height == ap.height;
    }
 
    public boolean hasNewLevel()
    {
-      return newLevel;
+      return numRx != 0;
    }
 
-   /**
-    * give the access point a new level to report
-    */
-   public void setLevel( int l )
+   public AccessPoint addMAC( String m )
    {
-      level = l;
-
-      rad_m = (float) Math.pow( 10, (level+47)/-27.5 );
-
-      newLevel = true;
+      macs.add( m.toLowerCase() );
+      return this;
    }
 
-   /**
-    * get the signal strength from the AP and no longer
-    * consider it a new level
-    *
-    * @return the rss from the access point if there is
-    *         a new level. Otherwise 0.
-    */
-   public int getLevel()
+   public void addRxLevel( float l )
    {
-      int retVal;
-
-      if( newLevel )
-         retVal = level;
-      else
-         retVal = 0;
-
-      newLevel = false;
-
-      return retVal;
+      rssAvg = ( (rssAvg * numRx) + l ) / (numRx + 1);
+      ++numRx;
+      
+      rad_m = (float) Math.pow( 10, - ( rssAvg + rxPower0 ) / exponent );
+      rad_m = (float) Math.sqrt( rad_m * rad_m - height * height );
    }
 
-   /**
-    * get the signal strength from the AP and keep the
-    * state of new level available.
-    *
-    * @return the rss from the access point if there is
-    *         a new level. Otherwise 0.
-    */
-   public int peekLevel()
+   public float getApproxRadiusPixels()
    {
-      if( newLevel )
-         return level;
-      else
-         return 0;
+      return BuildingMap.metersToPixels( rad_m );
    }
 
-   public float getEstimatedRadiusPixels()
+   public float getApproxRadiusMeters()
    {
-      float retVal;
-
-      retVal = BuildingMap.metersToPixels( newLevel ? rad_m : 0 );
-
-      newLevel = false;
-
-      return retVal;
+      return rad_m;
    }
 
-   public float peekEstimatedRadiusPixels()
+   public float getLevel()
    {
-      return BuildingMap.metersToPixels( newLevel ? rad_m : 0 );
+      return rssAvg;
    }
 
    public float distanceFromPixels( PointF p )
@@ -141,13 +110,18 @@ public class AccessPoint
                                 Math.pow( p.y - yLoc, 2 ) );
    }
 
+   public void clear()
+   {
+      numRx = 0;
+   }
+
    @Override
    public String toString()
    {
-      return "( " + xLoc + ", " + yLoc + ", " + height + 
-             ") <" + macAddress + ">";
+      return "( " + xLoc + ", " + yLoc + ", " + height + ")";
    }
 
+   /*
    public void saveState()
    {
       if( savedState == null )
@@ -172,4 +146,5 @@ public class AccessPoint
    {
       return savedState;
    }
+   */
 }

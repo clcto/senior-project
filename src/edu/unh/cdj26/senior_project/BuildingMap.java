@@ -25,6 +25,7 @@ public class BuildingMap extends View
    private boolean newWifiData;
    private float scale;
    private PointF userLocation;
+   private float userRad = 0;
 
    private float foc_x_old, foc_y_old;
 
@@ -98,6 +99,7 @@ public class BuildingMap extends View
       Rect bounds = mapImage.getBounds();
       
       List<AccessPoint> aps = IndoorLocalization.getAPs();
+      /*
       if( newWifiData )
       {
          for( AccessPoint ap : aps )
@@ -105,7 +107,7 @@ public class BuildingMap extends View
 
          newWifiData = false;
       }
-
+      */
       for( AccessPoint ap : aps )
       {
          float apX = ap.getX(); 
@@ -123,57 +125,48 @@ public class BuildingMap extends View
          p.rLineTo( -5, -10 );
          p.rLineTo( -5, 10 );
 
-         brush.setColor( 0xFFDD7700 );
-         brush.setStyle( Paint.Style.STROKE );
-         canvas.drawPath( p, brush );
-      
-         brush.setColor( 0x55DD7700 );
-         brush.setStyle( Paint.Style.FILL );
-         canvas.drawPath( p, brush );
-        
-         AccessPoint state = ap.getSavedState(); 
-         boolean debugTemp = true;
-         if( state != null && state.hasNewLevel() )
+
+         if( ap.hasNewLevel() )
          {
-            /*
-            int rss = state.peekLevel();
+            brush.setColor( 0xFFDD7700 );
+            brush.setStyle( Paint.Style.STROKE );
+            canvas.drawPath( p, brush );
+         
+            brush.setColor( 0x99DD7700 );
+            brush.setStyle( Paint.Style.FILL );
+            canvas.drawPath( p, brush );
+         }
+       
+         boolean debugTemp = true;
+         if( ap.hasNewLevel() )
+         {
+            float rss = ap.getLevel();
 
-            double d_m = Math.pow( 10, ( rss + 47 ) / (-27.5) );
-
-            double h = state.getHeight();
-
-            double rad_m = Math.sqrt( d_m*d_m - h*h );
+            double rad_m = ap.getApproxRadiusMeters();
             double rad_p = rad_m * 33.1 * scale;
 
-            if( debugTemp )
-            {
 
-               System.err.println( " --- " );
-               System.err.println( "rss:      " + rss );
-               System.err.println( "distance: " + d_m );
-               System.err.println( "radius:   " + rad_m );
-
-               debugTemp = false;
-
-            }
-
-            brush.setColor( 0x44CC1111 );
+            brush.setColor( 0x99CC1111 );
             brush.setStyle( Paint.Style.STROKE );
             canvas.drawCircle( (float) apX,
                                (float) apY, 
                                (float) rad_p,
                                brush );
-            */
          }
       }
 
       if( userLocation != null )
       {
-         brush.setColor( 0xFF2222CC );
+         brush.setColor( 0x992222CC );
          brush.setStyle( Paint.Style.FILL );
          canvas.drawCircle( userLocation.x * scale + bounds.left, 
                             userLocation.y * scale + bounds.top,
-                            4, brush );
+                            2, brush );
+
+         brush.setColor( 0x442222CC );
+         canvas.drawCircle( userLocation.x * scale + bounds.left,
+                            userLocation.y * scale + bounds.top,
+                            userRad * scale, brush );
       }
 
 
@@ -189,22 +182,8 @@ public class BuildingMap extends View
          return true;
 
       gestures.onTouchEvent(me);
-      switch( me.getAction() )
-      {
-         /* No longer need action up moves to center of screen
-         case MotionEvent.ACTION_UP:
-            Rect bounds = mapImage.getBounds();
-
-            float x = (me.getX() - bounds.left) / scale;
-            float y = (me.getY() - bounds.top) / scale;
-            System.err.println( x + ", " +  y );
-            setCenterPixel( (int)x, (int)y );
-            break;
-          */
-      }
 
       return true;
-      //return gestures.onTouchEvent( me );
    }
 
    public void setCenterPixel( float x, float y )
@@ -240,10 +219,13 @@ public class BuildingMap extends View
       UpperLeft, Center, Pixel
    }
 
-   public void newWifiData( float x, float y )
+   public void newWifiData( float x, float y, float r )
    {
       newWifiData = true;
       userLocation = new PointF( x, y );
+
+      setCenterPixel( x, y );
+      userRad = r;
       invalidate();
    }
 

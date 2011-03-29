@@ -11,7 +11,7 @@ import java.io.*;
 public class WifiService extends Service
 {
    private BroadcastReceiver receiver;
-   private boolean isRunning;
+   private WifiManager wm;
 
    private double distance;
 
@@ -24,7 +24,6 @@ public class WifiService extends Service
    @Override
    public void onCreate()
    {
-      isRunning = false;
 
    }
 
@@ -52,19 +51,13 @@ public class WifiService extends Service
 
    private void handleCommand( Intent intent )
    {
-      if( !isRunning )
-      {
-         isRunning = true;
+      IntentFilter i = new IntentFilter();
+      i.addAction( WifiManager.SCAN_RESULTS_AVAILABLE_ACTION );
+      receiver = new WifiReceiver();
 
-         IntentFilter i = new IntentFilter();
-         i.addAction( WifiManager.SCAN_RESULTS_AVAILABLE_ACTION );
-         receiver = new WifiReceiver();
-
-         registerReceiver( receiver, i );
-         WifiManager wm;
-         wm = (WifiManager) getApplicationContext().getSystemService( Context.WIFI_SERVICE );
-         wm.startScan();
-      }
+      registerReceiver( receiver, i );
+      wm = (WifiManager) getApplicationContext().getSystemService( Context.WIFI_SERVICE );
+      wm.startScan();
    }
 
    private class WifiReceiver extends BroadcastReceiver
@@ -83,14 +76,16 @@ public class WifiService extends Service
          public void handleMessage( Message m )
          {
             Bundle info = m.getData();
-            Intent scanDone = new Intent( "WIFI_DATA_PROCESSED" );
-            scanDone.putExtra( "x", info.getFloat( "x" ) );
-            scanDone.putExtra( "y", info.getFloat( "y" ) );
-            sendBroadcast( scanDone );
+            if( info.getBoolean( "finished" ) )
+            {
+               Intent scanDone = new Intent( "WIFI_DATA_PROCESSED" );
+               scanDone.putExtra( "x", info.getFloat( "x" ) );
+               scanDone.putExtra( "y", info.getFloat( "y" ) );
+               scanDone.putExtra( "radius", info.getFloat( "radius" ) );
+               sendBroadcast( scanDone );
+            }
 
-               // tell the wifiservice to stop. we only
-               // want(ed) to run once.
-            stopSelf();
+            wm.startScan();
          }
          
       }
