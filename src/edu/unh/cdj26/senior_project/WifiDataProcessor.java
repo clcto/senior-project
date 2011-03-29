@@ -31,7 +31,6 @@ public class WifiDataProcessor implements java.lang.Runnable
    public void run()
    {
       /* USE THIS CODE WHEN IN TARGET AREA */
-
       WifiManager manager;
       manager = (WifiManager) context.getSystemService( Context.WIFI_SERVICE );
       List<ScanResult> networks = manager.getScanResults();
@@ -47,6 +46,15 @@ public class WifiDataProcessor implements java.lang.Runnable
                 ap.addRxLevel( sr.level );
           }
       }
+
+      /* USE THIS CODE WHEN NOT IN TARGET AREA */
+      /*
+      List<AccessPoint> aps = IndoorLocalization.getAPs();
+      Random rng = new Random();
+      aps.get(0).addRxLevel( rng.nextInt(20) - 80 );
+      aps.get(2).addRxLevel( rng.nextInt(20) - 80 );
+      aps.get(3).addRxLevel( rng.nextInt(20) - 85 );
+      */
       
       if( wifiScans < NUM_SCANS )
       {
@@ -57,16 +65,6 @@ public class WifiDataProcessor implements java.lang.Runnable
          return;
       }
 
-      
-
-      /* USE THIS CODE WHEN NOT IN TARGET AREA */
-      /*
-      List<AccessPoint> aps = IndoorLocalization.getAPs();
-      Random rng = new Random();
-      aps.get(0).addRxLevel( rng.nextInt(20) - 80 );
-      aps.get(2).addRxLevel( rng.nextInt(20) - 80 );
-      aps.get(3).addRxLevel( rng.nextInt(20) - 85 );
-      */
 
          // get a guess
          // on one circle in the direction of the next
