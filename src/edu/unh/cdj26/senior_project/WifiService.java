@@ -45,7 +45,11 @@ public class WifiService extends Service
    @Override
    public void onDestroy()
    {
-      unregisterReceiver( receiver );
+      if( receiver != null )
+      {
+         unregisterReceiver( receiver );
+         receiver = null;
+      }
       super.onDestroy();
    }
 

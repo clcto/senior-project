@@ -14,7 +14,7 @@ import java.util.*;
 public class WifiDataProcessor implements java.lang.Runnable
 {
    private static int wifiScans = 0;
-   private static final int NUM_SCANS = 10;
+   private static final int NUM_SCANS = 3;
 
    private PointF lseStart = new PointF( 465, 750 );
    private Context context;
@@ -31,6 +31,7 @@ public class WifiDataProcessor implements java.lang.Runnable
    public void run()
    {
       /* USE THIS CODE WHEN IN TARGET AREA */
+      /*
       WifiManager manager;
       manager = (WifiManager) context.getSystemService( Context.WIFI_SERVICE );
       List<ScanResult> networks = manager.getScanResults();
@@ -46,15 +47,14 @@ public class WifiDataProcessor implements java.lang.Runnable
                 ap.addRxLevel( sr.level );
           }
       }
+      */
 
       /* USE THIS CODE WHEN NOT IN TARGET AREA */
-      /*
       List<AccessPoint> aps = IndoorLocalization.getAPs();
       Random rng = new Random();
-      aps.get(0).addRxLevel( rng.nextInt(20) - 80 );
-      aps.get(2).addRxLevel( rng.nextInt(20) - 80 );
-      aps.get(3).addRxLevel( rng.nextInt(20) - 85 );
-      */
+      aps.get(0).addRxLevel( rng.nextInt(25) - 95 );
+      aps.get(1).addRxLevel( rng.nextInt(25) - 90 );
+      aps.get(5).addRxLevel( rng.nextInt(25) - 92 );
       
       if( wifiScans < NUM_SCANS )
       {
@@ -65,7 +65,6 @@ public class WifiDataProcessor implements java.lang.Runnable
          return;
       }
 
-
          // get a guess
          // on one circle in the direction of the next
       int numAP = 0;
@@ -75,12 +74,11 @@ public class WifiDataProcessor implements java.lang.Runnable
       while( iter.hasNext() )
       {
          AccessPoint ap = iter.next();
-         if( ap.hasNewLevel() )
+         ap.save();
+         if( numAP < 2 && ap.hasNewLevel() )
          {
             rxAPs[ numAP ] = ap;
             numAP++;
-            if( numAP > 1 )
-               break;
          }
       }
       
@@ -98,9 +96,6 @@ public class WifiDataProcessor implements java.lang.Runnable
          Math.sqrt( Math.pow( rxAPs[0].getX() - rxAPs[1].getX(), 2 ) +
                     Math.pow( rxAPs[0].getY() - rxAPs[1].getY(), 2 ) );
 
-      System.err.println( rxAPs[0] );
-      System.err.println( rxAPs[1] );
-
       double rad = 0.5 * ( rxAPs[0].getApproxRadiusPixels() + total_distance - rxAPs[1].getApproxRadiusPixels() );
 
       double ratio = rad / total_distance;
@@ -114,13 +109,11 @@ public class WifiDataProcessor implements java.lang.Runnable
 
       lseStart = new PointF( (float) gX, (float) gY );
      
-      System.err.println( "starting guess" );
+      lseStart = guessLocation( lseStart, Float.MAX_VALUE, 80 );
+      lseStart = guessLocation( lseStart, Float.MAX_VALUE, 10 );
+      lseStart = guessLocation( lseStart, Float.MAX_VALUE, 2 );
 
-      lseStart = guessLocation( lseStart, Float.MAX_VALUE );
-
-      float radius = 200 + (float) Math.sqrt(lseAvg) / 15;
-      System.err.println( "cdj26 lseAvg: " + lseAvg );
-      System.err.println( "cdj26 rad: " + radius );
+      float radius = 300 + (float) lseAvg / 375;
 
          // set all aps to have no new levels
       Message msg = handler.obtainMessage();
@@ -128,21 +121,23 @@ public class WifiDataProcessor implements java.lang.Runnable
       msg.getData().putFloat( "y", lseStart.y );
       msg.getData().putFloat( "radius", radius );
       msg.getData().putBoolean( "finished", true );
+      wifiScans = 0;
       handler.sendMessage( msg );
    }
 
    
    public PointF guessLocation( PointF prevGuess,
-                                float  value )
+                                float  value,
+                                float  delta )
    {
       PointF minPt = prevGuess;
       float  minLSE = value;
 
       float[] lse = {0,0,0,0};
-      PointF[] pts = { new PointF( prevGuess.x + 12, prevGuess.y ),
-                       new PointF( prevGuess.x - 12, prevGuess.y ),
-                       new PointF( prevGuess.x, prevGuess.y + 12 ),
-                       new PointF( prevGuess.x, prevGuess.y - 12 ) };
+      PointF[] pts = { new PointF( prevGuess.x + delta, prevGuess.y ),
+                       new PointF( prevGuess.x - delta, prevGuess.y ),
+                       new PointF( prevGuess.x, prevGuess.y + delta ),
+                       new PointF( prevGuess.x, prevGuess.y - delta ) };
 
       int numAP = 0;
       // get value of least squares fuction at 
@@ -170,7 +165,6 @@ public class WifiDataProcessor implements java.lang.Runnable
       
       for( int i = 0; i < lse.length; ++i )
       {
-
          if( lse[i] < minLSE )
          {
             minLSE = lse[i];
@@ -185,6 +179,6 @@ public class WifiDataProcessor implements java.lang.Runnable
          return prevGuess;
       }
       else
-         return guessLocation( minPt, minLSE );
+         return guessLocation( minPt, minLSE, delta );
    }
 }

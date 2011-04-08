@@ -99,15 +99,7 @@ public class BuildingMap extends View
       Rect bounds = mapImage.getBounds();
       
       List<AccessPoint> aps = IndoorLocalization.getAPs();
-      /*
-      if( newWifiData )
-      {
-         for( AccessPoint ap : aps )
-            ap.saveState();
 
-         newWifiData = false;
-      }
-      */
       for( AccessPoint ap : aps )
       {
          float apX = ap.getX(); 
@@ -135,16 +127,8 @@ public class BuildingMap extends View
             brush.setColor( 0x99DD7700 );
             brush.setStyle( Paint.Style.FILL );
             canvas.drawPath( p, brush );
-         }
-       
-         boolean debugTemp = true;
-         if( ap.hasNewLevel() )
-         {
-            float rss = ap.getLevel();
 
-            double rad_m = ap.getApproxRadiusMeters();
-            double rad_p = rad_m * 33.1 * scale;
-
+            double rad_p = ap.getApproxRadiusPixels() * scale;
 
             brush.setColor( 0x99CC1111 );
             brush.setStyle( Paint.Style.STROKE );
@@ -224,7 +208,7 @@ public class BuildingMap extends View
       newWifiData = true;
       userLocation = new PointF( x, y );
 
-      setCenterPixel( x, y );
+      //setCenterPixel( x, y );
       userRad = r;
       invalidate();
    }
@@ -274,25 +258,9 @@ public class BuildingMap extends View
       float foc_x = sgd.getFocusX();
       float foc_y = sgd.getFocusY();
 
-      /* 
-      float foc_x_ave = ( foc_x_old + foc_x ) / 2;
-      float foc_y_ave = ( foc_y_old + foc_y ) / 2;
-
-      foc_x_old = foc_x;
-      foc_y_old = foc_y;
-      float bx = mapImage.getBounds().left;
-      float by = mapImage.getBounds().top;
-
-      float fy = foc_y_old;
-
-      float newX = (fx-bx)/scale;
-      float newY = (fy-by)/scale;
-      */
-
-
       scale *= sgd.getScaleFactor();
 
-      scale = Math.max( 0.25f, Math.min( scale, 1.0f ) );
+      scale = Math.max( 0.01f, Math.min( scale, 1.0f ) );
 
       setPixelRelativeTo( foc_x, foc_y, foc_x_old, foc_y_old );
 

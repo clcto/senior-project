@@ -18,6 +18,8 @@ public class AccessPoint
 
    private int numRx;
    private float rssAvg;
+   private float rssSum;
+   private boolean newLevel;
 
    public AccessPoint()
    {
@@ -32,9 +34,12 @@ public class AccessPoint
 
       numRx = 0;
       rssAvg = 0;
+      rssSum = 0;
       
       rxPower0 = p0;
       exponent = n;
+
+      newLevel = false;
 
       macs = new ArrayList<String>();
 
@@ -71,7 +76,7 @@ public class AccessPoint
 
    public boolean hasNewLevel()
    {
-      return numRx != 0;
+      return newLevel;
    }
 
    public AccessPoint addMAC( String m )
@@ -82,16 +87,14 @@ public class AccessPoint
 
    public void addRxLevel( float l )
    {
-      rssAvg = ( (rssAvg * numRx) + l ) / (numRx + 1);
+      rssSum += l;
       ++numRx;
-      
-      rad_m = (float) Math.pow( 10, - ( rssAvg + rxPower0 ) / exponent );
-      rad_m = (float) Math.sqrt( rad_m * rad_m - height * height );
    }
 
    public float getApproxRadiusPixels()
    {
       return BuildingMap.metersToPixels( rad_m );
+   
    }
 
    public float getApproxRadiusMeters()
@@ -113,6 +116,19 @@ public class AccessPoint
    public void clear()
    {
       numRx = 0;
+      rssSum = 0;
+   }
+
+   public void save()
+   {
+      rssAvg = rssSum / numRx;
+      newLevel = (numRx != 0);
+
+      rad_m = (float) Math.pow( 10, - ( rssAvg + rxPower0 ) / exponent );
+      if( height > rad_m )
+         rad_m = 1;
+      else
+         rad_m = (float) Math.sqrt( rad_m * rad_m - height * height );
    }
 
    @Override
@@ -121,7 +137,7 @@ public class AccessPoint
       return "( " + xLoc + ", " + yLoc + ", " + height + ")";
    }
 
-   /*
+/*
    public void saveState()
    {
       if( savedState == null )
