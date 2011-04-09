@@ -40,6 +40,7 @@ public class BuildingMap extends View
          getResources(), R.drawable.floorplan );
       mapWidth = bitmap.getWidth();
       mapHeight = bitmap.getHeight();
+      mapImage.setBounds( 0, 0, mapWidth, mapHeight );
 
       setUpperLeftPixel( 0, 0 );
 
@@ -59,6 +60,27 @@ public class BuildingMap extends View
       super.onDraw( canvas );
       canvas.save();
 
+
+      canvas.scale( scale, scale );
+      
+      switch( locRelative )
+      {
+         case UpperLeft:
+            canvas.translate( -xLoc, -yLoc );
+            break;
+         case Center:
+            canvas.translate( -xLoc + getWidth()/2,
+                              -yLoc + getHeight()/2 );
+            break;
+         case Pixel:
+            canvas.translate( -xLoc + xScreen,
+                              -yLoc + yScreen );
+            break;
+      }
+
+      mapImage.draw( canvas );
+
+/*
       float x, y;
       switch( locRelative )
       {
@@ -153,7 +175,7 @@ public class BuildingMap extends View
                             userRad * scale, brush );
       }
 
-
+*/
       canvas.restore();
    }
 
@@ -189,8 +211,8 @@ public class BuildingMap extends View
    public void setPixelRelativeTo( float sX, float sY, float pX, float pY )
    {
       locRelative = Location.Pixel;
-      xScreen = sX;
-      yScreen = sY;
+      xScreen = sX/scale;
+      yScreen = sY/scale;
 
       xLoc = pX;
       yLoc = pY;
