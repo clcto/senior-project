@@ -14,6 +14,7 @@
         </activity>
 
         <service android:enabled="true" android:name=".WifiService" />
+        <service android:enabled="true" android:name=".DirectionSensor" />
     </application>
 
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>

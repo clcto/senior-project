@@ -12,7 +12,7 @@ import android.graphics.*;
 
 public class IndoorLocalization extends Activity
 {
-   private ServiceNotificationReceiver receiver;
+   private BroadcastReceiver wifiRecv, orientationRecv;
    private BuildingMap map;
    
    private static List<AccessPoint> accessPoints;
@@ -25,7 +25,6 @@ public class IndoorLocalization extends Activity
 
       map = new BuildingMap( this );
       setContentView( map );
-      map.setUpperLeftPixel( 0, 0 );
 
       accessPoints = Collections.synchronizedList(
          new ArrayList<AccessPoint>() );
@@ -71,21 +70,29 @@ public class IndoorLocalization extends Activity
 
       Intent serviceIntent = new Intent( this, WifiService.class );
       startService( serviceIntent );
+
+      serviceIntent = new Intent( this, DirectionSensor.class );
+      startService( serviceIntent );
    }
 
    @Override
    public void onStart()
    {
       super.onStart();
-      receiver = new ServiceNotificationReceiver();
-      registerReceiver( receiver, new IntentFilter( "WIFI_DATA_PROCESSED" ) );
+      wifiRecv = new ServiceNotificationReceiver();
+      registerReceiver( wifiRecv, new IntentFilter( "WIFI_DATA_PROCESSED" ) );
+      
+      orientationRecv = new OrientationReceiver();
+      registerReceiver( orientationRecv, new IntentFilter( "COMPASS_DATA_PROCESSED" ) );
+
    }
 
    @Override
    public void onPause()
    {
       super.onPause();
-      unregisterReceiver( receiver );
+      //unregisterReceiver( wifiRecv );
+      //unregisterReceiver( orientationRecv );
    }
 
    @Override
@@ -94,16 +101,76 @@ public class IndoorLocalization extends Activity
       super.onStop();
    }
 
+   private class OrientationReceiver extends BroadcastReceiver
+   {
+      @Override
+      public void onReceive( Context context, Intent intent )
+      {
+         map.newCompassData( intent.getFloatExtra( "orientation", 0 ) );
+      }
+   }
+
+   float prev_x, prev_y, prev_r = 1;
+
    private class ServiceNotificationReceiver extends BroadcastReceiver
    {
       @Override
       public void onReceive( Context context, Intent intent )
       {
-         float x = intent.getFloatExtra( "x", -1 );
-         float y = intent.getFloatExtra( "y", -1 );
-         float r = intent.getFloatExtra( "radius", -1 );
+         float new_x = intent.getFloatExtra( "x", -1 );
+         float new_y = intent.getFloatExtra( "y", -1 );
+         float new_r = intent.getFloatExtra( "radius", -1 );
+         
+         double x = new_x - prev_x;
+         x /= prev_r;
 
-         map.newWifiData( x, y, r );
+         double y = new_y - prev_y;
+         y /= prev_r;
+
+         double r = new_r / prev_r;
+
+         double dist = Math.sqrt( x*x + y*y );
+         if( r > dist - 1 && r < dist + 1 )
+         {
+            // intersect
+            double u_int = ( dist*dist - r*r + 1 ) / ( 2*dist );
+            double v_int = Math.sqrt( 1 - u_int*u_int );
+
+            double theta = Math.atan2( y, x );
+            double x_int = (u_int * Math.cos( theta ) + v_int * Math.sin( theta ));
+            double y_int = (u_int * Math.sin( theta ) + v_int * Math.cos( theta ));
+
+            u_int = ( 1 + ( dist - r ) ) / 2;
+
+            x = u_int * Math.cos( theta );
+            y = u_int * Math.sin( theta );
+
+            r = Math.sqrt( (x-x_int)*(x-x_int) + (y-y_int)*(y-y_int) );
+
+            x *= prev_r;
+            x += prev_x;
+
+            y *= prev_r;
+            y += prev_y;
+
+            r *= prev_r;
+
+            map.newData( prev_x, prev_y, prev_r, new_x, new_y, new_r, x, y, r ); 
+
+            prev_x = (float)x;
+            prev_y = (float)y;
+            prev_r = (float)r;
+
+            
+         }
+         else
+         {
+            map.newWifiData( new_x, new_y, new_r );
+
+            prev_x = new_x;
+            prev_y = new_y;
+            prev_r = new_r;
+         }
       }
    }
 

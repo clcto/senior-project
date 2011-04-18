@@ -24,8 +24,9 @@ public class BuildingMap extends View
    private ArrayList<ActiveAPState> actives;
    private boolean newWifiData;
    private float scale;
-   private PointF userLocation;
-   private float userRad = 0;
+   private PointF userLocation, prev_userLocation, new_userLocation;
+   private float userOrientation;
+   private float userRad = 0, prev_userRad = 0, new_userRad = 0;
 
    private float foc_x_old, foc_y_old;
 
@@ -52,6 +53,9 @@ public class BuildingMap extends View
 
       newWifiData = false;
       scale = 0.5f;
+
+
+      setUpperLeftPixel( 0, 0 );
    }
 
    @Override
@@ -60,65 +64,46 @@ public class BuildingMap extends View
       super.onDraw( canvas );
       canvas.save();
 
-
       canvas.scale( scale, scale );
+      switch( locRelative )
+      {
+         case Center:
+            xLoc -= getWidth() / 2 / scale;
+            yLoc -= getHeight() / 2 / scale;
+            locRelative = Location.UpperLeft;
+            break;
+         case Pixel:
+            xLoc -= xScreen;
+            yLoc -= yScreen;
+            locRelative = Location.UpperLeft;
+            break;
+      }
       
-      switch( locRelative )
-      {
-         case UpperLeft:
-            canvas.translate( -xLoc, -yLoc );
-            break;
-         case Center:
-            canvas.translate( -xLoc + getWidth()/2,
-                              -yLoc + getHeight()/2 );
-            break;
-         case Pixel:
-            canvas.translate( -xLoc + xScreen,
-                              -yLoc + yScreen );
-            break;
-      }
+      canvas.translate( -xLoc, -yLoc );
 
-      mapImage.draw( canvas );
 
-/*
-      float x, y;
-      switch( locRelative )
-      {
-         case UpperLeft:
-            mapImage.setBounds( (int) (-xLoc * scale),
-                                (int) (-yLoc * scale), 
-                                (int) ((-xLoc + mapWidth)  * scale), 
-                                (int) ((-yLoc + mapHeight) * scale) );
-            break;
-         case Center:
-            x = xLoc - getWidth()/(2*scale);
-            y = yLoc - getHeight()/(2*scale);
-            mapImage.setBounds( (int) (-x * scale), 
-                                (int) (-y * scale),
-                                (int) ((-x + mapWidth)  * scale),
-                                (int) ((-y + mapHeight) * scale) );
-            break;
-         case Pixel:
-            x = xLoc - xScreen/scale;
-            y = yLoc - yScreen/scale;
-            mapImage.setBounds( (int) (-x * scale), 
-                                (int) (-y * scale),
-                                (int) ((-x + mapWidth)  * scale),
-                                (int) ((-y + mapHeight) * scale) );
-            break;
-      }
-
-      mapImage.draw( canvas );
-     
-     
       Paint brush = new Paint();
       brush.setDither( true );
       brush.setAntiAlias( true );
       brush.setStrokeJoin( Paint.Join.ROUND );
       brush.setStrokeCap( Paint.Cap.ROUND );
-      brush.setStrokeWidth( 2 );
+      brush.setStrokeWidth( 2/scale );
+      brush.setColor( 0xFF333333 );
+      brush.setStyle( Paint.Style.STROKE );
 
-      Rect bounds = mapImage.getBounds();
+
+      canvas.drawRGB( 200, 200, 200 );
+      mapImage.draw( canvas );
+      canvas.drawRect( -10, -10, mapWidth + 9, mapHeight + 9, brush );
+
+
+      Path triangle = new Path();
+      triangle.moveTo( -5, 4 );
+      triangle.rLineTo( 10, 0 );
+      triangle.rLineTo( -5, -10 );
+      triangle.rLineTo( -5, 10 );
+
+
       
       List<AccessPoint> aps = IndoorLocalization.getAPs();
 
@@ -127,32 +112,26 @@ public class BuildingMap extends View
          float apX = ap.getX(); 
          float apY = ap.getY();
 
-         apX *= scale;
-         apY *= scale;
-         
-         apX += bounds.left;
-         apY += bounds.top;
+         Matrix m = new Matrix();
+         m.preTranslate( apX, apY );
+         m.preScale( 1/scale, 1/scale );
 
-         Path p = new Path();
-         p.moveTo( apX - 5, apY + 4 );
-         p.rLineTo( 10, 0 );
-         p.rLineTo( -5, -10 );
-         p.rLineTo( -5, 10 );
-
+         Path ap_tri = new Path(); 
+         triangle.transform( m, ap_tri );
 
          if( ap.hasNewLevel() )
          {
-            brush.setColor( 0xFFDD7700 );
+            brush.setColor( 0x88DD7700 );
             brush.setStyle( Paint.Style.STROKE );
-            canvas.drawPath( p, brush );
+            canvas.drawPath( ap_tri, brush );
          
-            brush.setColor( 0x99DD7700 );
+            brush.setColor( 0x44DD7700 );
             brush.setStyle( Paint.Style.FILL );
-            canvas.drawPath( p, brush );
+            canvas.drawPath( ap_tri, brush );
 
-            double rad_p = ap.getApproxRadiusPixels() * scale;
+            double rad_p = ap.getApproxRadiusPixels();
 
-            brush.setColor( 0x99CC1111 );
+            brush.setColor( 0x44CC1111 );
             brush.setStyle( Paint.Style.STROKE );
             canvas.drawCircle( (float) apX,
                                (float) apY, 
@@ -163,19 +142,51 @@ public class BuildingMap extends View
 
       if( userLocation != null )
       {
-         brush.setColor( 0x992222CC );
-         brush.setStyle( Paint.Style.FILL );
-         canvas.drawCircle( userLocation.x * scale + bounds.left, 
-                            userLocation.y * scale + bounds.top,
-                            2, brush );
-
          brush.setColor( 0x442222CC );
-         canvas.drawCircle( userLocation.x * scale + bounds.left,
-                            userLocation.y * scale + bounds.top,
-                            userRad * scale, brush );
+         brush.setStyle( Paint.Style.FILL );
+         canvas.drawCircle( userLocation.x,
+                            userLocation.y,
+                            userRad, brush );
+
+         Matrix m = new Matrix();
+         m.preTranslate( userLocation.x, userLocation.y );
+         m.preRotate( userOrientation );
+         m.preScale( 1/scale, 1/scale );
+
+         Path user_icon = new Path();
+         user_icon.arcTo( new RectF( -7, -7, 7, 7 ), -65, 310 );
+         user_icon.lineTo( 0, -14 );
+         user_icon.close();
+
+         user_icon.transform( m );
+
+         brush.setColor( 0xFFFFFF00 );
+         canvas.drawPath( user_icon, brush );
+
+         brush.setColor( 0xFF2222CC );
+         brush.setStyle( Paint.Style.STROKE );
+         canvas.drawPath( user_icon, brush );
+
       }
 
-*/
+      if( prev_userLocation != null )
+      {
+         brush.setColor( 0xFF333333 );
+         brush.setStyle( Paint.Style.STROKE );
+         canvas.drawCircle( prev_userLocation.x,
+                            prev_userLocation.y,
+                            prev_userRad, brush );
+      }
+
+      if( new_userLocation != null )
+      {
+         brush.setColor( 0xFF333333 );
+         brush.setStyle( Paint.Style.STROKE );
+         canvas.drawCircle( new_userLocation.x,
+                            new_userLocation.y,
+                            new_userRad, brush );
+      }
+
       canvas.restore();
    }
 
@@ -225,13 +236,47 @@ public class BuildingMap extends View
       UpperLeft, Center, Pixel
    }
 
+   public void newCompassData( float deg )
+   {
+      userOrientation = deg - 40;
+      invalidate();
+   }
+
+   public void newData( double px, double py, double pr, 
+                        double nx, double ny, double nr,
+                        double cx, double cy, double cr )
+   {
+      newData( (float) px, (float) py, (float) pr,
+               (float) nx, (float) ny, (float) nr,
+               (float) cx, (float) cy, (float) cr );
+   }
+
+   public void newData( float px, float py, float pr, 
+                        float nx, float ny, float nr,
+                        float cx, float cy, float cr )
+   {
+      newWifiData = true;
+      userLocation = new PointF( cx, cy );
+      userRad = cr;
+
+      prev_userLocation = new PointF( px, py );
+      prev_userRad = pr;
+
+      new_userLocation = new PointF( nx, ny );
+      new_userRad = nr;
+
+      invalidate();
+   }
+
    public void newWifiData( float x, float y, float r )
    {
       newWifiData = true;
       userLocation = new PointF( x, y );
-
-      //setCenterPixel( x, y );
       userRad = r;
+
+      prev_userLocation = null;
+      new_userLocation = null;
+
       invalidate();
    }
 
@@ -295,11 +340,11 @@ public class BuildingMap extends View
       foc_x_old = sgd.getFocusX();
       foc_y_old = sgd.getFocusY();
 
-      foc_x_old -= mapImage.getBounds().left;
-      foc_y_old -= mapImage.getBounds().top;
-
       foc_x_old /= scale;
       foc_y_old /= scale;
+
+      foc_x_old += xLoc;
+      foc_y_old += yLoc;
 
       return true;
    }

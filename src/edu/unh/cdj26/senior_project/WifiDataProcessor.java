@@ -52,9 +52,9 @@ public class WifiDataProcessor implements java.lang.Runnable
       /* USE THIS CODE WHEN NOT IN TARGET AREA */
       List<AccessPoint> aps = IndoorLocalization.getAPs();
       Random rng = new Random();
-      aps.get(0).addRxLevel( rng.nextInt(25) - 95 );
-      aps.get(1).addRxLevel( rng.nextInt(25) - 90 );
-      aps.get(5).addRxLevel( rng.nextInt(25) - 92 );
+      aps.get(0).addRxLevel( rng.nextInt(30) - 105 );
+      aps.get(1).addRxLevel( rng.nextInt(30) - 100 );
+      aps.get(5).addRxLevel( rng.nextInt(30) - 102 );
       
       if( wifiScans < NUM_SCANS )
       {
