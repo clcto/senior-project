@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">IndoorLocalization</string>
+    <string name="ERR_EXTERNAL_FAIL">Unable to open external media.</string>
+    <string name="ERR_FILE_OPEN_FAIL">Unable to open file for writing.</string>
+    <string name="ERR_WRITE_FAIL">Write failed.</string>
+    <string name="ERR_NO_FILENAME">Please enter a filename.</string>
+    <string name="WRITE_SUCCESS">Capture written.</string>
 </resources>

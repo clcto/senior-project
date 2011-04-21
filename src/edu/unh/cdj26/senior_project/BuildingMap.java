@@ -1,11 +1,11 @@
-
 package edu.unh.cdj26.senior_project;
 
-import android.content.Context;
+import android.content.*;
 import android.graphics.drawable.*;
 import android.view.*;
 import android.graphics.*;
 import java.util.*;
+import java.io.*;
 
 
 public class BuildingMap extends View
@@ -13,27 +13,51 @@ public class BuildingMap extends View
                           ScaleGestureDetector.OnScaleGestureListener
                         
 {
+   private static BuildingMap instance;
+   public static synchronized BuildingMap instance()
+   {
+      if( instance == null )
+         if( context != null )
+            instance = new BuildingMap( context );
+      return instance;
+   }
+
+   public static void setContext( Context c )
+   {
+      context = c;
+   }
 
    private Drawable mapImage;
    private int mapWidth, mapHeight;
-   private float xLoc, yLoc;
+   private float xLoc = 0, yLoc = 0;
    private float xScreen, yScreen;
-   private Location locRelative;
+   private Location locRelative = Location.UpperLeft;
    private GestureDetector gestures;
    private ScaleGestureDetector scaleDetector;
-   private ArrayList<ActiveAPState> actives;
-   private boolean newWifiData;
-   private float scale;
+   private boolean newWifiData = false;
+   private float scale = 0.2f;
    private PointF userLocation, prev_userLocation, new_userLocation;
    private float userOrientation;
    private float userRad = 0, prev_userRad = 0, new_userRad = 0;
+   private boolean scaleToFit = true;
 
    private float foc_x_old, foc_y_old;
 
+   private static Context context;
+
+   public void removeFromParent()
+   {
+      ViewGroup parent = (ViewGroup) getParent();
+      if( parent != null )
+         parent.removeView( this );
+   }
+
       // access points will be passed in
-   public BuildingMap( Context c )
+   private BuildingMap( Context c )
    {
       super( c );
+
+      System.err.println( "Building Map Constructor" );
       mapImage = c.getResources().getDrawable( 
                   R.drawable.floorplan );
 
@@ -43,28 +67,136 @@ public class BuildingMap extends View
       mapHeight = bitmap.getHeight();
       mapImage.setBounds( 0, 0, mapWidth, mapHeight );
 
-      setUpperLeftPixel( 0, 0 );
-
       gestures = new GestureDetector( c, this ); 
       scaleDetector = new ScaleGestureDetector( c, this );
 
+      setCenterPixel( mapWidth/2, mapHeight/2 );
+   }
 
-      actives = new ArrayList<ActiveAPState>();
+   public void reset()
+   {
+      scaleToFit = true;
+      setCenterPixel( mapWidth/2, mapHeight/2 );
+   }
+   
+   private void drawMapCoord( Canvas screen, float scale_width, float icon_scale )
+   {
 
-      newWifiData = false;
-      scale = 0.5f;
+      Paint brush = new Paint();
+      brush.setDither( true );
+      brush.setAntiAlias( true );
+      brush.setStrokeJoin( Paint.Join.ROUND );
+      brush.setStrokeCap( Paint.Cap.ROUND );
+      brush.setColor( 0xFF333333 );
+      brush.setStyle( Paint.Style.STROKE );
+      brush.setStrokeWidth( scale_width );
 
+      screen.drawRGB( 200, 200, 200 );
+      mapImage.draw( screen );
 
-      setUpperLeftPixel( 0, 0 );
+      screen.drawRect( -1, -1, mapWidth, mapHeight, brush );
+
+      Path triangle = new Path();
+      triangle.moveTo( -5, 4 );
+      triangle.rLineTo( 10, 0 );
+      triangle.rLineTo( -5, -10 );
+      triangle.rLineTo( -5, 10 );
+
+      List<AccessPoint> aps = IndoorLocalization.getAPs();
+
+      for( AccessPoint ap : aps )
+      {
+         float apX = ap.getX(); 
+         float apY = ap.getY();
+
+         Matrix m = new Matrix();
+         m.preTranslate( apX, apY );
+         m.preScale( icon_scale, icon_scale );
+
+         Path ap_tri = new Path(); 
+         triangle.transform( m, ap_tri );
+
+         if( ap.hasNewLevel() )
+         {
+            brush.setColor( 0x88DD7700 );
+            brush.setStyle( Paint.Style.STROKE );
+            screen.drawPath( ap_tri, brush );
+         
+            brush.setColor( 0x44DD7700 );
+            brush.setStyle( Paint.Style.FILL );
+            screen.drawPath( ap_tri, brush );
+
+            double rad_p = ap.getApproxRadiusPixels();
+
+            brush.setColor( 0xAAFF0000 );
+            brush.setStyle( Paint.Style.STROKE );
+            screen.drawCircle( (float) apX,
+                               (float) apY, 
+                               (float) rad_p,
+                               brush );
+
+         }
+      }
+
+      if( userLocation != null )
+      {
+         brush.setColor( 0x442222CC );
+         brush.setStyle( Paint.Style.FILL );
+         screen.drawCircle( userLocation.x,
+                            userLocation.y,
+                            userRad, brush );
+
+         Matrix m = new Matrix();
+         m.preTranslate( userLocation.x, userLocation.y );
+         m.preRotate( userOrientation );
+         m.preScale( icon_scale, icon_scale );
+
+         Path user_icon = new Path();
+         user_icon.arcTo( new RectF( -7, -7, 7, 7 ), -65, 310 );
+         user_icon.lineTo( 0, -14 );
+         user_icon.close();
+
+         Path scrn_user = new Path();
+         user_icon.transform( m, scrn_user );
+
+         brush.setColor( 0xFFFFFF00 );
+         
+         screen.drawPath( scrn_user, brush );
+         
+         brush.setColor( 0xFF2222CC );
+         brush.setStyle( Paint.Style.STROKE );
+         screen.drawPath( scrn_user, brush );
+      }
+
+      brush.setColor( 0xFF333333 );
+      brush.setStyle( Paint.Style.STROKE );
+
+      if( prev_userLocation != null )
+         screen.drawCircle( prev_userLocation.x,
+                            prev_userLocation.y,
+                            prev_userRad, brush );
+
+      if( new_userLocation != null )
+         screen.drawCircle( new_userLocation.x,
+                            new_userLocation.y,
+                            new_userRad, brush );
+
    }
 
    @Override
-   protected void onDraw( Canvas canvas )
+   protected void onDraw( Canvas screen )
    {
-      super.onDraw( canvas );
-      canvas.save();
+      super.onDraw( screen );
+      
+      screen.save();
+      
+      if( scaleToFit )
+      {
+         scale = (float) Math.min( (float) getWidth()/(mapWidth+50), (float) getHeight()/(mapHeight+50) );
+         scaleToFit = false;
+      }
 
-      canvas.scale( scale, scale );
+      screen.scale( scale, scale );
       switch( locRelative )
       {
          case Center:
@@ -79,115 +211,11 @@ public class BuildingMap extends View
             break;
       }
       
-      canvas.translate( -xLoc, -yLoc );
+      screen.translate( -xLoc, -yLoc );
 
+      drawMapCoord( screen, 2/scale, 1/scale );
 
-      Paint brush = new Paint();
-      brush.setDither( true );
-      brush.setAntiAlias( true );
-      brush.setStrokeJoin( Paint.Join.ROUND );
-      brush.setStrokeCap( Paint.Cap.ROUND );
-      brush.setStrokeWidth( 2/scale );
-      brush.setColor( 0xFF333333 );
-      brush.setStyle( Paint.Style.STROKE );
-
-
-      canvas.drawRGB( 200, 200, 200 );
-      mapImage.draw( canvas );
-      canvas.drawRect( -10, -10, mapWidth + 9, mapHeight + 9, brush );
-
-
-      Path triangle = new Path();
-      triangle.moveTo( -5, 4 );
-      triangle.rLineTo( 10, 0 );
-      triangle.rLineTo( -5, -10 );
-      triangle.rLineTo( -5, 10 );
-
-
-      
-      List<AccessPoint> aps = IndoorLocalization.getAPs();
-
-      for( AccessPoint ap : aps )
-      {
-         float apX = ap.getX(); 
-         float apY = ap.getY();
-
-         Matrix m = new Matrix();
-         m.preTranslate( apX, apY );
-         m.preScale( 1/scale, 1/scale );
-
-         Path ap_tri = new Path(); 
-         triangle.transform( m, ap_tri );
-
-         if( ap.hasNewLevel() )
-         {
-            brush.setColor( 0x88DD7700 );
-            brush.setStyle( Paint.Style.STROKE );
-            canvas.drawPath( ap_tri, brush );
-         
-            brush.setColor( 0x44DD7700 );
-            brush.setStyle( Paint.Style.FILL );
-            canvas.drawPath( ap_tri, brush );
-
-            double rad_p = ap.getApproxRadiusPixels();
-
-            brush.setColor( 0x44CC1111 );
-            brush.setStyle( Paint.Style.STROKE );
-            canvas.drawCircle( (float) apX,
-                               (float) apY, 
-                               (float) rad_p,
-                               brush );
-         }
-      }
-
-      if( userLocation != null )
-      {
-         brush.setColor( 0x442222CC );
-         brush.setStyle( Paint.Style.FILL );
-         canvas.drawCircle( userLocation.x,
-                            userLocation.y,
-                            userRad, brush );
-
-         Matrix m = new Matrix();
-         m.preTranslate( userLocation.x, userLocation.y );
-         m.preRotate( userOrientation );
-         m.preScale( 1/scale, 1/scale );
-
-         Path user_icon = new Path();
-         user_icon.arcTo( new RectF( -7, -7, 7, 7 ), -65, 310 );
-         user_icon.lineTo( 0, -14 );
-         user_icon.close();
-
-         user_icon.transform( m );
-
-         brush.setColor( 0xFFFFFF00 );
-         canvas.drawPath( user_icon, brush );
-
-         brush.setColor( 0xFF2222CC );
-         brush.setStyle( Paint.Style.STROKE );
-         canvas.drawPath( user_icon, brush );
-
-      }
-
-      if( prev_userLocation != null )
-      {
-         brush.setColor( 0xFF333333 );
-         brush.setStyle( Paint.Style.STROKE );
-         canvas.drawCircle( prev_userLocation.x,
-                            prev_userLocation.y,
-                            prev_userRad, brush );
-      }
-
-      if( new_userLocation != null )
-      {
-         brush.setColor( 0xFF333333 );
-         brush.setStyle( Paint.Style.STROKE );
-         canvas.drawCircle( new_userLocation.x,
-                            new_userLocation.y,
-                            new_userRad, brush );
-      }
-
-      canvas.restore();
+      screen.restore();
    }
 
    @Override
@@ -255,6 +283,8 @@ public class BuildingMap extends View
                         float nx, float ny, float nr,
                         float cx, float cy, float cr )
    {
+
+      System.out.println( "New Data" );
       newWifiData = true;
       userLocation = new PointF( cx, cy );
       userRad = cr;
@@ -270,6 +300,7 @@ public class BuildingMap extends View
 
    public void newWifiData( float x, float y, float r )
    {
+      System.out.println( "New Wifi Data" );
       newWifiData = true;
       userLocation = new PointF( x, y );
       userRad = r;
@@ -278,6 +309,40 @@ public class BuildingMap extends View
       new_userLocation = null;
 
       invalidate();
+   }
+
+   public boolean saveToFile( OutputStream file )
+   {
+      Bitmap image = Bitmap.createBitmap( (mapWidth + 600), (mapHeight + 600), Bitmap.Config.ARGB_8888 );
+      Canvas canvas = new Canvas( image );
+
+      canvas.translate( 300, 300 );
+
+      drawMapCoord( canvas, 7, 4 );
+
+
+      boolean ret = true;
+
+      try
+      {
+         try
+         {
+            image.compress( Bitmap.CompressFormat.PNG, 30, file );
+
+            file.flush();
+         }
+         catch( IOException e ){ ret = false; }
+         finally
+         {
+            file.close();
+         }
+      }
+      catch( IOException e )
+      {
+         ret = false;
+      }
+
+      return ret;
    }
 
    @Override
@@ -306,6 +371,7 @@ public class BuildingMap extends View
    @Override
    public void onLongPress( MotionEvent me )
    {
+
    }
 
    @Override

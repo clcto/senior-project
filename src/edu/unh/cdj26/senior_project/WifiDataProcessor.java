@@ -20,6 +20,7 @@ public class WifiDataProcessor implements java.lang.Runnable
    private Context context;
    private Handler handler;
    private float lseAvg;
+      Random rng = new Random();
 
    public WifiDataProcessor( Context c, Handler h )
    {
@@ -30,14 +31,15 @@ public class WifiDataProcessor implements java.lang.Runnable
 
    public void run()
    {
+      List<AccessPoint> aps = IndoorLocalization.getAPs();
+      for( AccessPoint ap : aps )
+         ap.clear();
+
       /* USE THIS CODE WHEN IN TARGET AREA */
       /*
       WifiManager manager;
       manager = (WifiManager) context.getSystemService( Context.WIFI_SERVICE );
       List<ScanResult> networks = manager.getScanResults();
-      List<AccessPoint> aps = IndoorLocalization.getAPs();
-      for( AccessPoint ap : aps )
-         ap.clear();
 
       for( ScanResult sr : networks )
       {
@@ -50,11 +52,9 @@ public class WifiDataProcessor implements java.lang.Runnable
       */
 
       /* USE THIS CODE WHEN NOT IN TARGET AREA */
-      List<AccessPoint> aps = IndoorLocalization.getAPs();
-      Random rng = new Random();
-      aps.get(0).addRxLevel( rng.nextInt(30) - 105 );
-      aps.get(1).addRxLevel( rng.nextInt(30) - 100 );
-      aps.get(5).addRxLevel( rng.nextInt(30) - 102 );
+      aps.get(0).addRxLevel( rng.nextInt(15) - 85 );
+      aps.get(1).addRxLevel( rng.nextInt(15) - 82 );
+      aps.get(5).addRxLevel( rng.nextInt(15) - 87);
       
       if( wifiScans < NUM_SCANS )
       {
@@ -64,68 +64,103 @@ public class WifiDataProcessor implements java.lang.Runnable
          handler.sendMessage( msg );
          return;
       }
+      
+      ArrayList<AccessPoint> rx = getReceivedAP( aps );
 
+      PointF best = getBestReceived( rx );
+      if( best != null )
+      {
+         // best = guessLocation( best, Float.MAX_VALUE, 5 );
+         double lseAvg = getLS( rx, best ) / rx.size();
+
+         float radius = 300 + (float) lseAvg / 375;
+
+            // set all aps to have no new levels
+         Message msg = handler.obtainMessage();
+         msg.getData().putFloat( "x", best.x );
+         msg.getData().putFloat( "y", best.y );
+         msg.getData().putFloat( "radius", radius );
+         msg.getData().putBoolean( "finished", true );
+         wifiScans = 0;
+         handler.sendMessage( msg );
+      }
+   }
+
+   private PointF getBest( List<AccessPoint> aps )
+   {
+      return getBestReceived( getReceivedAP( aps ) );
+   }
+
+   private PointF getBestReceived( ArrayList<AccessPoint> rx )
+   {
+
+      double r_min, r_max, r_approx, r_delta;
+      double d_theta;
+
+      double ls_min = Double.MAX_VALUE;
+      PointF best = null;
+
+      for( AccessPoint ap : rx )
+      {
+         r_approx = ap.getApproxRadiusPixels();
+         r_min = Math.max( 2, r_approx - 100 );
+         r_max = r_approx + 200;
+         r_delta = ( r_max - r_min ) / 60;
+
+         for( double r = r_min; r < r_max; r += r_delta )
+         {
+            d_theta = Math.toRadians( Math.max( 10 - 4.5 * r / r_approx, 1 ) );
+            for( double a = 0; a < 2 * Math.PI; a += d_theta )
+            {
+               double x = ap.getY() + r * Math.cos( a );
+               double y = ap.getX() + r * Math.sin( a );
+
+               PointF loc = new PointF( (float) x, (float) y );
+               double ls = getLS( rx, loc );
+               if( ls < ls_min)
+               {
+                  ls_min = ls;
+                  best = loc;
+               }
+            }
+         }
+      }
+
+      return best;
+   }
+
+   private double getLS( ArrayList<AccessPoint> rx, PointF loc )
+   {
+      double ls_val = 0;
+
+      for( AccessPoint ap : rx )
+         ls_val += Math.pow( ap.getApproxRadiusPixels() - ap.distanceFromPixels( loc ), 2 );
+
+      if( ls_val == 0 )
+         ls_val = Double.MAX_VALUE;
+
+      return ls_val;
+   }
+
+   private ArrayList<AccessPoint> getReceivedAP( List<AccessPoint> aps )
+   {
          // get a guess
          // on one circle in the direction of the next
-      int numAP = 0;
       Iterator<AccessPoint> iter = aps.iterator();
-      AccessPoint[] rxAPs = new AccessPoint[2];
+      ArrayList<AccessPoint> rx = new ArrayList<AccessPoint>();
 
       while( iter.hasNext() )
       {
          AccessPoint ap = iter.next();
          ap.save();
-         if( numAP < 2 && ap.hasNewLevel() )
-         {
-            rxAPs[ numAP ] = ap;
-            numAP++;
-         }
-      }
-      
-         // check to see if we got 2 ap
-      if( rxAPs[1] == null )
-      {
-         wifiScans = 0;
-         Message msg = handler.obtainMessage();
-         msg.getData().putBoolean( "finished", false );
-         handler.sendMessage( msg );
-         return;
+         if( ap.hasNewLevel() )
+            rx.add( ap );
       }
 
-      double total_distance = 
-         Math.sqrt( Math.pow( rxAPs[0].getX() - rxAPs[1].getX(), 2 ) +
-                    Math.pow( rxAPs[0].getY() - rxAPs[1].getY(), 2 ) );
-
-      double rad = 0.5 * ( rxAPs[0].getApproxRadiusPixels() + total_distance - rxAPs[1].getApproxRadiusPixels() );
-
-      double ratio = rad / total_distance;
-
-      // check to see which side of rxAPs[0] rxAPs[1] thinks I am
-      if( rxAPs[1].getApproxRadiusPixels() > total_distance )
-         ratio *= -1;
-
-      double gX = rxAPs[0].getX() + ratio * (rxAPs[1].getX() - rxAPs[0].getX());
-      double gY = rxAPs[0].getY() + ratio * (rxAPs[1].getY() - rxAPs[0].getY());
-
-      lseStart = new PointF( (float) gX, (float) gY );
-     
-      lseStart = guessLocation( lseStart, Float.MAX_VALUE, 80 );
-      lseStart = guessLocation( lseStart, Float.MAX_VALUE, 10 );
-      lseStart = guessLocation( lseStart, Float.MAX_VALUE, 2 );
-
-      float radius = 300 + (float) lseAvg / 375;
-
-         // set all aps to have no new levels
-      Message msg = handler.obtainMessage();
-      msg.getData().putFloat( "x", lseStart.x );
-      msg.getData().putFloat( "y", lseStart.y );
-      msg.getData().putFloat( "radius", radius );
-      msg.getData().putBoolean( "finished", true );
-      wifiScans = 0;
-      handler.sendMessage( msg );
+      return rx;
    }
+      
 
-   
    public PointF guessLocation( PointF prevGuess,
                                 float  value,
                                 float  delta )

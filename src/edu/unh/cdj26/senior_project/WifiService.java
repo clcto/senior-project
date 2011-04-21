@@ -12,6 +12,7 @@ public class WifiService extends Service
 {
    private BroadcastReceiver receiver;
    private WifiManager wm;
+   private static boolean running = false;
 
    private double distance;
 
@@ -46,18 +47,29 @@ public class WifiService extends Service
    public void onDestroy()
    {
       unregisterReceiver( receiver );
+      running = false;
       super.onDestroy();
    }
 
    private void handleCommand( Intent intent )
    {
-      IntentFilter i = new IntentFilter();
-      i.addAction( WifiManager.SCAN_RESULTS_AVAILABLE_ACTION );
-      receiver = new WifiReceiver();
+      if( !running )
+      {
+         IntentFilter i = new IntentFilter();
+         i.addAction( WifiManager.SCAN_RESULTS_AVAILABLE_ACTION );
+         receiver = new WifiReceiver();
 
-      registerReceiver( receiver, i );
-      wm = (WifiManager) getApplicationContext().getSystemService( Context.WIFI_SERVICE );
-      wm.startScan();
+         registerReceiver( receiver, i );
+         wm = (WifiManager) getApplicationContext().getSystemService( Context.WIFI_SERVICE );
+         wm.startScan();
+         
+         running = true;
+      }
+   }
+
+   public static synchronized boolean isRunning()
+   {
+      return running;
    }
 
    private class WifiReceiver extends BroadcastReceiver
