@@ -16,6 +16,7 @@ public class IndoorLocalization extends Activity
    private BroadcastReceiver wifiRecv, orientationRecv;
    private static BuildingMap map;
    private static boolean running = true;
+   private FileWriter accel_data;
 
    private static boolean first_run = true;
 
@@ -73,6 +74,21 @@ public class IndoorLocalization extends Activity
          first_run = false;
          System.err.println( "first run setup" );
 
+         if( accel_data != null )
+         {
+            try{
+               accel_data.write( "-1,-1,-1,-1,-1\n" ); // write -1s signifing new open
+               accel_data.flush();
+            }
+            catch( IOException e )
+            {
+               try{ accel_data.close(); }
+               catch( IOException double_e ){}
+               finally{ accel_data = null; }
+            }
+         }
+
+
       }
    }
    
@@ -86,10 +102,30 @@ public class IndoorLocalization extends Activity
    {
       super.onCreate(savedInstanceState);
 
+      File dir = getExternalFilesDir( null );
+      dir = new File( dir, "acclerometer" );
+      if( !dir.exists() )
+         dir.mkdirs();
+
+      try
+      {
+         accel_data = new FileWriter( new File( dir, "latest_data.csv" ), true );
+      }
+      catch( IOException e )
+      {
+         if( accel_data != null )
+         {
+            try{ accel_data.close(); }
+            catch( IOException double_e ){}
+            finally{ accel_data = null; }
+         }
+      }
+
       setup();
       map.removeFromParent();
       map.reset();
       setContentView( map );
+
 
       context = this;
    }
@@ -121,6 +157,11 @@ public class IndoorLocalization extends Activity
    public void onStop()
    {
       super.onStop();
+      if( accel_data != null )
+      {
+         try{ accel_data.close(); }
+         catch( IOException e ){ accel_data = null; }
+      }
    }
 
    @Override
@@ -153,8 +194,6 @@ public class IndoorLocalization extends Activity
             if( running )
                pause();
             showDialog( CAPTURE_FILENAME, null );
-            if( running )
-               resume();
             break; 
       }
 
@@ -170,7 +209,16 @@ public class IndoorLocalization extends Activity
          case CAPTURE_FILENAME:
             final Dialog filename_dialog = new Dialog( context );
             filename_dialog.setContentView( R.layout.capture_entry );
-            filename_dialog.setTitle( "Cature Filename" );
+            filename_dialog.setTitle( "Capture Filename" );
+            filename_dialog.setOnDismissListener( new DialogInterface.OnDismissListener()
+               {
+                  @Override
+                  public void onDismiss( DialogInterface di )
+                  {
+                     if( running )
+                        resume();
+                  }
+               } );
 
             Button ok = (Button) filename_dialog.findViewById( R.id.capture_entry_ok );
             Button cancel = (Button) filename_dialog.findViewById( R.id.capture_entry_cancel );
@@ -179,54 +227,59 @@ public class IndoorLocalization extends Activity
                {
                   public void onClick( View v )
                   {
+                              System.err.println( "ok click" );
                      EditText input = (EditText) filename_dialog.findViewById( R.id.filename_input );
-                     String filename = ("" + input.getText()).trim();
+                     final String filename = ("" + input.getText()).trim();
 
-                     //dismissDialog( CAPTURE_FILENAME );
-                     removeDialog( CAPTURE_FILENAME );
-                     ProgressDialog saving = ProgressDialog.show( context, "", 
-                                             "Saving. Pleas Wait", true);
+                     dismissDialog( CAPTURE_FILENAME );
 
                      if( filename == null || filename.length() == 0 )
                      {
-                        saving.dismiss();
                         Toast.makeText( context, R.string.ERR_NO_FILENAME, Toast.LENGTH_SHORT ).show();
                         showDialog( CAPTURE_FILENAME, null );
                         return;
                      }
                      
 
-                     File dir = getExternalFilesDir(Environment.DIRECTORY_PICTURES).getAbsoluteFile();
+                     final File dir = getExternalFilesDir(Environment.DIRECTORY_PICTURES).getAbsoluteFile();
                      if( dir == null )
                      {
-                        saving.dismiss();
                         Toast.makeText( context, R.string.ERR_EXTERNAL_FAIL, Toast.LENGTH_SHORT ).show();
                         return;
                      }
 
-                     try
-                     {
-                        dir = new File( dir.getPath() + "/captures/" ); 
-                        File file = new File( dir.getPath() + "/" + filename );
+                     Thread save_thread = new Thread( new Runnable()
+                        {
+                           @Override
+                           public void run()
+                           {
+                              System.err.println( "creating process dialog" );
+                              ProgressDialog saving = ProgressDialog.show( context, "", 
+                                                "Saving. Pleas Wait", true);
+                              try
+                              {
+                                 File final_dir = new File( dir.getPath() + "/captures/" ); 
+                                 File file = new File( final_dir.getPath() + "/" + filename );
 
-                        if( !dir.exists() )
-                           dir.mkdirs();
-                        
-                        OutputStream out = new BufferedOutputStream( new FileOutputStream(file) );
-                        if( !map.saveToFile( out ) )
-                           Toast.makeText( context, R.string.ERR_WRITE_FAIL, Toast.LENGTH_SHORT ).show();
-                        else
-                           Toast.makeText( context, R.string.WRITE_SUCCESS, Toast.LENGTH_SHORT ).show();
-                        saving.dismiss();
+                                 if( !dir.exists() )
+                                    dir.mkdirs();
+                                 
+                                 OutputStream out = new BufferedOutputStream( new FileOutputStream(file) );
+                                 if( !map.saveToFile( out ) )
+                                    Toast.makeText( context, R.string.ERR_WRITE_FAIL, Toast.LENGTH_SHORT ).show();
+                                 else
+                                    Toast.makeText( context, R.string.WRITE_SUCCESS, Toast.LENGTH_SHORT ).show();
+                                 saving.dismiss();
 
-                        return;
-                     }
-                     catch( IOException e )
-                     {
-                        saving.dismiss();
-                        Toast.makeText( context, R.string.ERR_FILE_OPEN_FAIL, Toast.LENGTH_SHORT ).show();
-                        return;
-                     }
+                              }
+                              catch( IOException e )
+                              {
+                                 saving.dismiss();
+                                 Toast.makeText( context, R.string.ERR_FILE_OPEN_FAIL, Toast.LENGTH_SHORT ).show();
+                              }
+                           }
+                        } );
+                     save_thread.run();
                   }
                } );
 
@@ -284,6 +337,28 @@ public class IndoorLocalization extends Activity
       @Override
       public void onReceive( Context context, Intent intent )
       {
+         if( accel_data != null )
+         {
+            long timestamp = intent.getLongExtra( "timestamp", -1 );
+            float[] accel = intent.getFloatArrayExtra( "accelerometer" );
+            if( accel.length == 3 )
+            {
+                  // 0 means not a new session
+               try
+               {
+                  accel_data.write( timestamp + "," + accel[0] + "," + accel[1] + "," + accel[2] + ",0\n" );
+                  accel_data.flush();
+               }
+               catch( IOException e )
+               {
+                  try{ accel_data.close(); }
+                  catch( IOException double_e ){}
+                  finally{ accel_data = null; }
+               }
+            }
+
+         }
+
          map.newCompassData( intent.getFloatExtra( "orientation", 0 ) );
       }
    }

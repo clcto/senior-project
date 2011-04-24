@@ -36,7 +36,6 @@ public class WifiDataProcessor implements java.lang.Runnable
          ap.clear();
 
       /* USE THIS CODE WHEN IN TARGET AREA */
-      /*
       WifiManager manager;
       manager = (WifiManager) context.getSystemService( Context.WIFI_SERVICE );
       List<ScanResult> networks = manager.getScanResults();
@@ -49,12 +48,13 @@ public class WifiDataProcessor implements java.lang.Runnable
                 ap.addRxLevel( sr.level );
           }
       }
-      */
 
       /* USE THIS CODE WHEN NOT IN TARGET AREA */
+      /*
       aps.get(0).addRxLevel( rng.nextInt(15) - 85 );
       aps.get(1).addRxLevel( rng.nextInt(15) - 82 );
       aps.get(5).addRxLevel( rng.nextInt(15) - 87);
+      */
       
       if( wifiScans < NUM_SCANS )
       {
