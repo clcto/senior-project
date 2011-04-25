@@ -14,7 +14,7 @@ import java.util.*;
 public class WifiDataProcessor implements java.lang.Runnable
 {
    private static int wifiScans = 0;
-   private static final int NUM_SCANS = 3;
+   public static int numScans = 3;
 
    private PointF lseStart = new PointF( 465, 750 );
    private Context context;
@@ -36,6 +36,7 @@ public class WifiDataProcessor implements java.lang.Runnable
          ap.clear();
 
       /* USE THIS CODE WHEN IN TARGET AREA */
+      /*
       WifiManager manager;
       manager = (WifiManager) context.getSystemService( Context.WIFI_SERVICE );
       List<ScanResult> networks = manager.getScanResults();
@@ -48,15 +49,14 @@ public class WifiDataProcessor implements java.lang.Runnable
                 ap.addRxLevel( sr.level );
           }
       }
+      */
 
       /* USE THIS CODE WHEN NOT IN TARGET AREA */
-      /*
       aps.get(0).addRxLevel( rng.nextInt(15) - 85 );
       aps.get(1).addRxLevel( rng.nextInt(15) - 82 );
       aps.get(5).addRxLevel( rng.nextInt(15) - 87);
-      */
       
-      if( wifiScans < NUM_SCANS )
+      if( wifiScans < numScans )
       {
          wifiScans++;
          Message msg = handler.obtainMessage();
@@ -73,7 +73,7 @@ public class WifiDataProcessor implements java.lang.Runnable
          // best = guessLocation( best, Float.MAX_VALUE, 5 );
          double lseAvg = getLS( rx, best ) / rx.size();
 
-         float radius = 300 + (float) lseAvg / 375;
+         float radius = 350 + (float) Math.sqrt(lseAvg)/15;
 
             // set all aps to have no new levels
          Message msg = handler.obtainMessage();

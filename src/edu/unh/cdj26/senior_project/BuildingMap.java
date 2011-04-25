@@ -27,6 +27,9 @@ public class BuildingMap extends View
       context = c;
    }
 
+
+   private ArrayList<MovementArea> areas;
+
    private Drawable mapImage;
    private int mapWidth, mapHeight;
    private float xLoc = 0, yLoc = 0;
@@ -40,6 +43,10 @@ public class BuildingMap extends View
    private float userOrientation;
    private float userRad = 0, prev_userRad = 0, new_userRad = 0;
    private boolean scaleToFit = true;
+
+   private PointF direction = new PointF( 0, 0 );
+
+   private boolean isMoving = false;
 
    private float foc_x_old, foc_y_old;
 
@@ -57,19 +64,23 @@ public class BuildingMap extends View
    {
       super( c );
 
-      System.err.println( "Building Map Constructor" );
       mapImage = c.getResources().getDrawable( 
                   R.drawable.floorplan );
 
       Bitmap bitmap = BitmapFactory.decodeResource(
          getResources(), R.drawable.floorplan );
-      mapWidth = bitmap.getWidth();
-      mapHeight = bitmap.getHeight();
+
+            // still dont know why i need this 1.5 bullshit
+      mapWidth  = (int) ( bitmap.getWidth() / 1.5 );
+      mapHeight = (int) ( bitmap.getHeight() / 1.5 );
+      
       mapImage.setBounds( 0, 0, mapWidth, mapHeight );
 
       gestures = new GestureDetector( c, this ); 
       scaleDetector = new ScaleGestureDetector( c, this );
 
+      createMovementAreas();
+      
       setCenterPixel( mapWidth/2, mapHeight/2 );
    }
 
@@ -156,16 +167,31 @@ public class BuildingMap extends View
          user_icon.lineTo( 0, -14 );
          user_icon.close();
 
-         Path scrn_user = new Path();
-         user_icon.transform( m, scrn_user );
+            Path scrn_user = new Path();
+            user_icon.transform( m, scrn_user );
 
-         brush.setColor( 0xFFFFFF00 );
-         
-         screen.drawPath( scrn_user, brush );
+         if( isMoving )
+         {
+            brush.setColor( 0xFFFFFF00 );
+            screen.drawPath( scrn_user, brush );
+         }
+
+         //debug
+         if( direction != null )
+            screen.drawLine( userLocation.x, userLocation.y,
+                             userLocation.x + direction.x, userLocation.y + direction.y, brush );
          
          brush.setColor( 0xFF2222CC );
          brush.setStyle( Paint.Style.STROKE );
          screen.drawPath( scrn_user, brush );
+
+         for( MovementArea ma : areas )
+         {
+            MovementArea.Intersection i = ma.getIntersection( userLocation.x, userLocation.y, 
+                                                              userRad, new PointF( 1, 0 ) );
+            if( i != null )
+               screen.drawPath( i.path, brush );
+         }
       }
 
       brush.setColor( 0xFF333333 );
@@ -180,7 +206,6 @@ public class BuildingMap extends View
          screen.drawCircle( new_userLocation.x,
                             new_userLocation.y,
                             new_userRad, brush );
-
    }
 
    @Override
@@ -264,27 +289,26 @@ public class BuildingMap extends View
       UpperLeft, Center, Pixel
    }
 
-   public void newCompassData( float deg )
+   public void newAccelerometerData( float deg, boolean moving )
    {
-      userOrientation = deg - 40;
+      userOrientation = deg;
+      isMoving = moving;
       invalidate();
    }
 
    public void newData( double px, double py, double pr, 
                         double nx, double ny, double nr,
-                        double cx, double cy, double cr )
+                        double cx, double cy, double cr, PointF dom )
    {
       newData( (float) px, (float) py, (float) pr,
                (float) nx, (float) ny, (float) nr,
-               (float) cx, (float) cy, (float) cr );
+               (float) cx, (float) cy, (float) cr, dom );
    }
 
    public void newData( float px, float py, float pr, 
                         float nx, float ny, float nr,
-                        float cx, float cy, float cr )
+                        float cx, float cy, float cr, PointF dom )
    {
-
-      System.out.println( "New Data" );
       newWifiData = true;
       userLocation = new PointF( cx, cy );
       userRad = cr;
@@ -295,12 +319,19 @@ public class BuildingMap extends View
       new_userLocation = new PointF( nx, ny );
       new_userRad = nr;
 
+      if( dom != null )
+      {
+         prev_userLocation.offset( dom.x, dom.y );
+         direction.set( dom );
+      }
+      else
+         direction.set( 0, 0 );
+
       invalidate();
    }
 
    public void newWifiData( float x, float y, float r )
    {
-      System.out.println( "New Wifi Data" );
       newWifiData = true;
       userLocation = new PointF( x, y );
       userRad = r;
@@ -425,17 +456,93 @@ public class BuildingMap extends View
       return meters * 33.1f;
    }
 
-   private class ActiveAPState
+   public static double metersToPixels( double meters )
    {
-      public float x_px, y_px, inner, outer;
+      return meters * 33.1;
+   }
 
-      public ActiveAPState( float x, float y,
-                            float i, float o )
-      {
-         x_px = x;
-         y_px = y;
-         inner = i;
-         outer = o;
-      }
+   public static float toScreenAngle( float orientation )
+   {
+      return orientation - 40;
+   }
+
+   private void createMovementAreas()
+   {
+      areas = new ArrayList<MovementArea> ();
+
+      MovementArea a;
+      a = new MovementArea( 120, 771, 635, 896, new PointF( 1, 0 ) );
+      areas.add( a );
+
+      a = new MovementArea( 0, 660, 100, 770, new PointF( 0, 1 ) );
+      a.addDirection( new PointF( 2, 1 ) );
+      areas.add( a );
+
+      a = new MovementArea( 636, 686, 824, 770, new PointF( 1, 0 ) );
+      areas.add( a );
+
+      a = new MovementArea( 636, 806, 737, 896, new PointF( 1, 0 ) );
+      a.addDirection( new PointF( 0, 1 ) );
+      areas.add( a );
+
+      a = new MovementArea( 636, 771, 732, 805, new PointF( 0, 1 ) );
+      areas.add( a );
+
+      a = new MovementArea( 593, 897, 725, 1173, new PointF( 0, 1 ) );
+      areas.add( a );
+
+      a = new MovementArea( 738, 811, 903, 881, new PointF( 1, 0 ) );
+      areas.add( a );
+
+      a = new MovementArea( 904, 851, 1036, 881, new PointF( 1, 0 ) );
+      areas.add( a );
+
+      a = new MovementArea( 1006, 811, 1036, 850, new PointF( 1, 0 ) );
+      a.addDirection( new PointF( 1, 2 ) );
+      areas.add( a );
+      
+      a = new MovementArea( 904, 811, 1006, 850,  new PointF( 1, 0 ) );
+      a.addDirection( new PointF( 0, 1 ) );
+      areas.add( a );
+
+      a = new MovementArea( 933, 435, 1006, 810, new PointF( 0, 1 ) );
+      areas.add( a );
+
+      a = new MovementArea( 903, 716, 932, 810,  new PointF( -1, 1 ) );
+      areas.add( a );
+
+      a = new MovementArea( 1037, 826, 1537, 881, new PointF( 1, 0 ) );
+      areas.add( a );
+
+      a = new MovementArea( 1537, 853, 1664, 881, new PointF( 1, 0 ) );
+      areas.add( a );
+
+      a = new MovementArea( 1537, 0, 1613, 787, new PointF( 0, 1 ) );
+      areas.add( a );
+
+      a = new MovementArea( 1537, 788, 1613, 852, new PointF( 0, 1 ) );
+      a.addDirection( new PointF( 1, 0 ) );
+      areas.add( a );
+
+      a = new MovementArea( 1613, 788, 1664, 852, new PointF( 1, 0 ) );
+      a.addDirection( new PointF( 1, 1 ) );
+      areas.add( a );
+
+      a = new MovementArea( 1488, 788, 1537, 852, new PointF( 1, 0 ) );
+      a.addDirection( new PointF( -1, 1 ) );
+      areas.add( a );
+
+      a = new MovementArea( 1665, 826, 2615, 881, new PointF( 1, 0 ) );
+      areas.add( a );
+
+      a = new MovementArea( 2616, 810, 2969, 881, new PointF( 1, 0 ) );
+      areas.add( a );
+
+      a = new MovementArea( 0, 830, 120, 896, new PointF( 1, 0 ) );
+      areas.add( a );
+
+      a = new MovementArea( 0, 771, 120, 829, new PointF( 0, 1 ) );
+      a.addDirection( new PointF( 1, 0 ) );
+      areas.add( a );
    }
 }

@@ -95,6 +95,8 @@ public class WifiService extends Service
                scanDone.putExtra( "y", info.getFloat( "y" ) );
                scanDone.putExtra( "radius", info.getFloat( "radius" ) );
                sendBroadcast( scanDone );
+
+               WifiDataProcessor.numScans = 2;
             }
 
             wm.startScan();

@@ -16,9 +16,12 @@ public class IndoorLocalization extends Activity
    private BroadcastReceiver wifiRecv, orientationRecv;
    private static BuildingMap map;
    private static boolean running = true;
-   private FileWriter accel_data;
+
+   private static final double WALK_SPEED = BuildingMap.metersToPixels( 1.4 * Math.pow( 10, -9 ) );
 
    private static boolean first_run = true;
+
+   private PointF offset;
 
    private void setup()
    {
@@ -71,23 +74,9 @@ public class IndoorLocalization extends Activity
          ap.addMAC( "00:0C:41:12:3A:7D" );
          accessPoints.add( ap );
 
+         WifiDataProcessor.numScans = 10;
+
          first_run = false;
-         System.err.println( "first run setup" );
-
-         if( accel_data != null )
-         {
-            try{
-               accel_data.write( "-1,-1,-1,-1,-1\n" ); // write -1s signifing new open
-               accel_data.flush();
-            }
-            catch( IOException e )
-            {
-               try{ accel_data.close(); }
-               catch( IOException double_e ){}
-               finally{ accel_data = null; }
-            }
-         }
-
 
       }
    }
@@ -101,25 +90,6 @@ public class IndoorLocalization extends Activity
    public void onCreate(Bundle savedInstanceState)
    {
       super.onCreate(savedInstanceState);
-
-      File dir = getExternalFilesDir( null );
-      dir = new File( dir, "acclerometer" );
-      if( !dir.exists() )
-         dir.mkdirs();
-
-      try
-      {
-         accel_data = new FileWriter( new File( dir, "latest_data.csv" ), true );
-      }
-      catch( IOException e )
-      {
-         if( accel_data != null )
-         {
-            try{ accel_data.close(); }
-            catch( IOException double_e ){}
-            finally{ accel_data = null; }
-         }
-      }
 
       setup();
       map.removeFromParent();
@@ -157,11 +127,6 @@ public class IndoorLocalization extends Activity
    public void onStop()
    {
       super.onStop();
-      if( accel_data != null )
-      {
-         try{ accel_data.close(); }
-         catch( IOException e ){ accel_data = null; }
-      }
    }
 
    @Override
@@ -227,7 +192,6 @@ public class IndoorLocalization extends Activity
                {
                   public void onClick( View v )
                   {
-                              System.err.println( "ok click" );
                      EditText input = (EditText) filename_dialog.findViewById( R.id.filename_input );
                      final String filename = ("" + input.getText()).trim();
 
@@ -253,7 +217,6 @@ public class IndoorLocalization extends Activity
                            @Override
                            public void run()
                            {
-                              System.err.println( "creating process dialog" );
                               ProgressDialog saving = ProgressDialog.show( context, "", 
                                                 "Saving. Pleas Wait", true);
                               try
@@ -301,7 +264,6 @@ public class IndoorLocalization extends Activity
    
    private void pause()
    {
-      System.err.println( "paused" );
       Intent service = new Intent( this, WifiService.class );
       stopService( service );
 
@@ -334,39 +296,42 @@ public class IndoorLocalization extends Activity
 
    private class OrientationReceiver extends BroadcastReceiver
    {
+      float prev_z = Float.MIN_VALUE;
+      long prev_move_timestamp = 0;
+
       @Override
       public void onReceive( Context context, Intent intent )
       {
-         if( accel_data != null )
+         float orientation = BuildingMap.toScreenAngle( intent.getFloatExtra( "orientation", 0 ) );
+         
+         long timestamp = intent.getLongExtra( "timestamp", -1 );
+         float[] accel = intent.getFloatArrayExtra( "accelerometer" );
+         if( accel == null ) return;
+
+         long dt_ns = timestamp - prev_move_timestamp;
+         if( Math.abs( accel[2] - prev_z ) > .35 || dt_ns < 200000 )
          {
-            long timestamp = intent.getLongExtra( "timestamp", -1 );
-            float[] accel = intent.getFloatArrayExtra( "accelerometer" );
-            if( accel.length == 3 )
+               // show user which way the device is pointed and if he is moving
+            map.newAccelerometerData( orientation, true );
+            prev_move_timestamp = timestamp;
+
+            if( offset != null )
             {
-                  // 0 means not a new session
-               try
-               {
-                  accel_data.write( timestamp + "," + accel[0] + "," + accel[1] + "," + accel[2] + ",0\n" );
-                  accel_data.flush();
-               }
-               catch( IOException e )
-               {
-                  try{ accel_data.close(); }
-                  catch( IOException double_e ){}
-                  finally{ accel_data = null; }
-               }
+               offset.x += dt_ns * WALK_SPEED * Math.sin( Math.toRadians( orientation ) );
+               offset.y -= dt_ns * WALK_SPEED * Math.cos( Math.toRadians( orientation ) );
             }
-
          }
+         else
+            map.newAccelerometerData( orientation, false );
 
-         map.newCompassData( intent.getFloatExtra( "orientation", 0 ) );
+         prev_z = accel[2];
       }
    }
 
-   float prev_x = 0, prev_y = 0, prev_r = 1;
-
    private class ServiceNotificationReceiver extends BroadcastReceiver
    {
+      float prev_x, prev_y, prev_r = 1;
+
       @Override
       public void onReceive( Context context, Intent intent )
       {
@@ -381,6 +346,7 @@ public class IndoorLocalization extends Activity
          if( dist > prev_r + new_r || dist < Math.abs( new_r - prev_r ) )
             // no intersect
          {
+            
             map.newWifiData( new_x, new_y, new_r );
 
             prev_x = new_x;
@@ -411,7 +377,7 @@ public class IndoorLocalization extends Activity
 
             r = Math.max( r, BuildingMap.metersToPixels( 7 ) );
 
-            map.newData( prev_x, prev_y, prev_r, new_x, new_y, new_r, x, y, r ); 
+            map.newData( prev_x, prev_y, prev_r, new_x, new_y, new_r, x, y, r, offset ); 
 
             prev_x = (float)x;
             prev_y = (float)y;
@@ -419,6 +385,10 @@ public class IndoorLocalization extends Activity
 
             
          }
+         if( offset != null )
+            offset.set( 0, 0 );
+         else
+            offset = new PointF( 0, 0 );
       }
    }
 
