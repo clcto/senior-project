@@ -13,6 +13,9 @@ public class BuildingMap extends View
                           ScaleGestureDetector.OnScaleGestureListener
                         
 {
+   public static boolean showAPs = false, showWifi = false, showRect = true;
+
+
    private static BuildingMap instance;
    public static synchronized BuildingMap instance()
    {
@@ -29,6 +32,8 @@ public class BuildingMap extends View
 
 
    private ArrayList<MovementArea> areas;
+   private ArrayList<MovementArea.Intersection> intersections;
+   private PointF finalUserLocation;
 
    private Drawable mapImage;
    private int mapWidth, mapHeight;
@@ -70,9 +75,8 @@ public class BuildingMap extends View
       Bitmap bitmap = BitmapFactory.decodeResource(
          getResources(), R.drawable.floorplan );
 
-            // still dont know why i need this 1.5 bullshit
-      mapWidth  = (int) ( bitmap.getWidth() / 1.5 );
-      mapHeight = (int) ( bitmap.getHeight() / 1.5 );
+      mapWidth  = (int) ( bitmap.getWidth()  );
+      mapHeight = (int) ( bitmap.getHeight()  );
       
       mapImage.setBounds( 0, 0, mapWidth, mapHeight );
 
@@ -82,6 +86,7 @@ public class BuildingMap extends View
       createMovementAreas();
       
       setCenterPixel( mapWidth/2, mapHeight/2 );
+      intersections = new ArrayList<MovementArea.Intersection>();
    }
 
    public void reset()
@@ -115,50 +120,98 @@ public class BuildingMap extends View
 
       List<AccessPoint> aps = IndoorLocalization.getAPs();
 
-      for( AccessPoint ap : aps )
+      if( showAPs )
       {
-         float apX = ap.getX(); 
-         float apY = ap.getY();
-
-         Matrix m = new Matrix();
-         m.preTranslate( apX, apY );
-         m.preScale( icon_scale, icon_scale );
-
-         Path ap_tri = new Path(); 
-         triangle.transform( m, ap_tri );
-
-         if( ap.hasNewLevel() )
+         for( AccessPoint ap : aps )
          {
-            brush.setColor( 0x88DD7700 );
-            brush.setStyle( Paint.Style.STROKE );
-            screen.drawPath( ap_tri, brush );
-         
-            brush.setColor( 0x44DD7700 );
-            brush.setStyle( Paint.Style.FILL );
-            screen.drawPath( ap_tri, brush );
+            float apX = ap.getX(); 
+            float apY = ap.getY();
 
-            double rad_p = ap.getApproxRadiusPixels();
+            Matrix m = new Matrix();
+            m.preTranslate( apX, apY );
+            m.preScale( icon_scale, icon_scale );
 
-            brush.setColor( 0xAAFF0000 );
-            brush.setStyle( Paint.Style.STROKE );
-            screen.drawCircle( (float) apX,
-                               (float) apY, 
-                               (float) rad_p,
-                               brush );
+            Path ap_tri = new Path(); 
+            triangle.transform( m, ap_tri );
 
+            if( ap.hasNewLevel() )
+            {
+               brush.setColor( 0x88DD7700 );
+               brush.setStyle( Paint.Style.STROKE );
+               screen.drawPath( ap_tri, brush );
+            
+               brush.setColor( 0x44DD7700 );
+               brush.setStyle( Paint.Style.FILL );
+               screen.drawPath( ap_tri, brush );
+
+               double rad_p = ap.getApproxRadiusPixels();
+
+               brush.setColor( 0xAAFF0000 );
+               brush.setStyle( Paint.Style.STROKE );
+               screen.drawCircle( (float) apX,
+                                  (float) apY, 
+                                  (float) rad_p,
+                                  brush );
+
+            }
+         }
+      }
+
+      brush.setStyle( Paint.Style.FILL );
+      brush.setColor( 0x002222CC );
+
+      if( showRect )
+      {
+         for( MovementArea.Intersection i : intersections )
+         {
+            brush.setAlpha( 50 + (int)( 100 * i.probability ) );
+            screen.drawPath( i.path, brush );
+         }
+      }
+
+      if( showWifi )
+      {
+         brush.setStyle( Paint.Style.STROKE );
+         if( prev_userLocation != null )
+         {
+            brush.setColor( 0x668800FF );
+
+            screen.drawCircle( prev_userLocation.x,
+                               prev_userLocation.y,
+                               prev_userRad, brush );
+
+            screen.drawLine( prev_userLocation.x, prev_userLocation.y,
+                             prev_userLocation.x + direction.x, prev_userLocation.y + direction.y, brush );
+
+            brush.setColor( 0xFF8800FF );
+            screen.drawCircle( prev_userLocation.x + direction.x,
+                               prev_userLocation.y + direction.y,
+                               prev_userRad, brush );
+         }
+
+         if( new_userLocation != null )
+         {
+            brush.setColor( 0xFF00FFFF );
+
+            screen.drawCircle( new_userLocation.x,
+                               new_userLocation.y,
+                               new_userRad, brush );
          }
       }
 
       if( userLocation != null )
       {
-         brush.setColor( 0x442222CC );
+         brush.setAlpha( 20 ); 
          brush.setStyle( Paint.Style.FILL );
          screen.drawCircle( userLocation.x,
                             userLocation.y,
                             userRad, brush );
+      }
 
+      if( finalUserLocation != null )
+      {
          Matrix m = new Matrix();
-         m.preTranslate( userLocation.x, userLocation.y );
+         m.preTranslate( finalUserLocation.x, finalUserLocation.y );
          m.preRotate( userOrientation );
          m.preScale( icon_scale, icon_scale );
 
@@ -167,45 +220,24 @@ public class BuildingMap extends View
          user_icon.lineTo( 0, -14 );
          user_icon.close();
 
-            Path scrn_user = new Path();
-            user_icon.transform( m, scrn_user );
+         Path scrn_user = new Path();
+         user_icon.transform( m, scrn_user );
 
          if( isMoving )
          {
             brush.setColor( 0xFFFFFF00 );
+            brush.setStyle( Paint.Style.FILL );
             screen.drawPath( scrn_user, brush );
          }
 
-         //debug
-         if( direction != null )
-            screen.drawLine( userLocation.x, userLocation.y,
-                             userLocation.x + direction.x, userLocation.y + direction.y, brush );
-         
-         brush.setColor( 0xFF2222CC );
+         brush.setColor( 0xFF000066 );
+         brush.setStyle( Paint.Style.STROKE );
          brush.setStyle( Paint.Style.STROKE );
          screen.drawPath( scrn_user, brush );
 
-         for( MovementArea ma : areas )
-         {
-            MovementArea.Intersection i = ma.getIntersection( userLocation.x, userLocation.y, 
-                                                              userRad, new PointF( 1, 0 ) );
-            if( i != null )
-               screen.drawPath( i.path, brush );
-         }
       }
+   
 
-      brush.setColor( 0xFF333333 );
-      brush.setStyle( Paint.Style.STROKE );
-
-      if( prev_userLocation != null )
-         screen.drawCircle( prev_userLocation.x,
-                            prev_userLocation.y,
-                            prev_userRad, brush );
-
-      if( new_userLocation != null )
-         screen.drawCircle( new_userLocation.x,
-                            new_userLocation.y,
-                            new_userRad, brush );
    }
 
    @Override
@@ -309,6 +341,8 @@ public class BuildingMap extends View
                         float nx, float ny, float nr,
                         float cx, float cy, float cr, PointF dom )
    {
+      finalUserLocation = null;
+
       newWifiData = true;
       userLocation = new PointF( cx, cy );
       userRad = cr;
@@ -320,18 +354,17 @@ public class BuildingMap extends View
       new_userRad = nr;
 
       if( dom != null )
-      {
-         prev_userLocation.offset( dom.x, dom.y );
          direction.set( dom );
-      }
       else
          direction.set( 0, 0 );
 
+      useMovementAreas();
       invalidate();
    }
 
    public void newWifiData( float x, float y, float r )
    {
+      finalUserLocation = null;
       newWifiData = true;
       userLocation = new PointF( x, y );
       userRad = r;
@@ -339,15 +372,161 @@ public class BuildingMap extends View
       prev_userLocation = null;
       new_userLocation = null;
 
+      useMovementAreas();
       invalidate();
+   }
+
+   private void useMovementAreas()
+   {
+      intersections.clear();
+      ArrayList<MovementArea> maxAreas = new ArrayList<MovementArea>(); 
+      float maxProb = Float.MIN_VALUE;
+
+      for( MovementArea ma : areas )
+      {
+         MovementArea.Intersection i = ma.getIntersection( userLocation.x, userLocation.y, 
+                                                           userRad, direction );
+         if( i != null )
+         {
+            if( i.probability > maxProb )
+            {
+               maxAreas.clear();
+               maxAreas.add( ma );
+               maxProb = i.probability;
+            }
+            else if( i.probability == maxProb )
+               maxAreas.add( ma );
+
+            intersections.add( i );
+         }
+      }
+
+      if( maxProb != Float.MIN_VALUE )
+         finalUserLocation = snapLocation( maxAreas );
+      else
+         finalUserLocation = new PointF( userLocation.x, userLocation.y );
+
+   }
+
+   private PointF snapLocation( ArrayList<MovementArea> maxAreas )
+   {
+      double min_dist, cur_dist, best_x = userLocation.x, best_y = userLocation.y;
+
+      min_dist = Float.MAX_VALUE;
+      for( MovementArea ma : maxAreas )
+      {
+         Rect bounds = ma.getBounds();
+
+         if( bounds.left < userLocation.x && userLocation.x < bounds.right )
+         {
+            if( userLocation.y > bounds.bottom )
+            {
+               cur_dist = userLocation.y - bounds.bottom;
+               if( cur_dist < min_dist )
+               {
+                  min_dist = cur_dist;
+                  best_x = userLocation.x;
+                  best_y = bounds.bottom;
+               }   
+            }
+            else if( userLocation.y < bounds.top )
+            {
+               cur_dist = bounds.top - userLocation.y;
+               if( cur_dist < min_dist )
+               {
+                  min_dist = cur_dist;
+                  best_x = userLocation.x;
+                  best_y = bounds.top;
+               }
+            }
+            else //inside rectangle
+               return new PointF( userLocation.x, userLocation.y );
+            
+         }
+         else if( userLocation.x < bounds.left )
+         {
+            if( userLocation.y > bounds.bottom )
+            {
+               cur_dist = 
+                  Math.sqrt( Math.pow( userLocation.x - bounds.left, 2 ) + 
+                             Math.pow( userLocation.y - bounds.bottom, 2 ) );
+               if( cur_dist < min_dist )
+               {
+                  min_dist = cur_dist;
+                  best_x = bounds.left;
+                  best_y = bounds.bottom;
+               }   
+            }
+            else if( userLocation.y < bounds.top )
+            {
+               cur_dist = 
+                  Math.sqrt( Math.pow( userLocation.x - bounds.left, 2 ) + 
+                             Math.pow( userLocation.y - bounds.top, 2 ) );
+               if( cur_dist < min_dist )
+               {
+                  min_dist = cur_dist;
+                  best_x = bounds.left;
+                  best_y = bounds.top;
+               }
+            }
+            else
+            {
+               cur_dist = bounds.left - userLocation.x;
+               if( cur_dist < min_dist )
+               {
+                  min_dist = cur_dist;
+                  best_x = bounds.left;
+                  best_y = userLocation.y;
+               }
+            }
+         }
+         else if( userLocation.x > bounds.right )
+         {
+            if( userLocation.y > bounds.bottom )
+            {
+               cur_dist = 
+                  Math.sqrt( Math.pow( userLocation.x - bounds.right, 2 ) + 
+                             Math.pow( userLocation.y - bounds.bottom, 2 ) );
+               if( cur_dist < min_dist )
+               {
+                  min_dist = cur_dist;
+                  best_x = bounds.right;
+                  best_y = bounds.bottom;
+               }   
+            }
+            else if( userLocation.y < bounds.top )
+            {
+               cur_dist = 
+                  Math.sqrt( Math.pow( userLocation.x - bounds.right, 2 ) + 
+                             Math.pow( userLocation.y - bounds.top, 2 ) );
+               if( cur_dist < min_dist )
+               {
+                  min_dist = cur_dist;
+                  best_x = bounds.right;
+                  best_y = bounds.top;
+               }
+            }
+            else
+            {
+               cur_dist = userLocation.x - bounds.right;
+               if( cur_dist < min_dist )
+               {
+                  min_dist = cur_dist;
+                  best_x = bounds.right;
+                  best_y = userLocation.y;
+               }
+            }
+         }
+      }
+      return new PointF( (float) best_x, (float) best_y );
    }
 
    public boolean saveToFile( OutputStream file )
    {
-      Bitmap image = Bitmap.createBitmap( (mapWidth + 600), (mapHeight + 600), Bitmap.Config.ARGB_8888 );
+      Bitmap image = Bitmap.createBitmap( (mapWidth + 200), (mapHeight + 200), Bitmap.Config.ARGB_8888 );
       Canvas canvas = new Canvas( image );
 
-      canvas.translate( 300, 300 );
+      canvas.translate( 100, 100 );
 
       drawMapCoord( canvas, 7, 4 );
 

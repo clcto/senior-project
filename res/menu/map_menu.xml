@@ -2,6 +2,14 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:id="@+id/pause_resume"
           android:title="Pause" />
+    <item android:id="@+id/calibrate"
+          android:title="Calibrate" />
+    <item android:id="@+id/aps"
+          android:title="Toggle APs" />
+    <item android:id="@+id/wifi_locations"
+          android:title="Toggle Wifi Circles" />
+    <item android:id="@+id/movement_areas"
+          android:title="Toggle Movement" />
     <item android:id="@+id/capture"
           android:title="Capture" />
 </menu>

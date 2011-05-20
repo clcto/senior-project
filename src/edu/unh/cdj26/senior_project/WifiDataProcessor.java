@@ -20,7 +20,7 @@ public class WifiDataProcessor implements java.lang.Runnable
    private Context context;
    private Handler handler;
    private float lseAvg;
-      Random rng = new Random();
+   private static Random rng = new Random(0);
 
    public WifiDataProcessor( Context c, Handler h )
    {
@@ -36,7 +36,6 @@ public class WifiDataProcessor implements java.lang.Runnable
          ap.clear();
 
       /* USE THIS CODE WHEN IN TARGET AREA */
-      /*
       WifiManager manager;
       manager = (WifiManager) context.getSystemService( Context.WIFI_SERVICE );
       List<ScanResult> networks = manager.getScanResults();
@@ -49,12 +48,13 @@ public class WifiDataProcessor implements java.lang.Runnable
                 ap.addRxLevel( sr.level );
           }
       }
-      */
 
       /* USE THIS CODE WHEN NOT IN TARGET AREA */
+      /*
       aps.get(0).addRxLevel( rng.nextInt(15) - 85 );
       aps.get(1).addRxLevel( rng.nextInt(15) - 82 );
       aps.get(5).addRxLevel( rng.nextInt(15) - 87);
+      */
       
       if( wifiScans < numScans )
       {
@@ -70,10 +70,10 @@ public class WifiDataProcessor implements java.lang.Runnable
       PointF best = getBestReceived( rx );
       if( best != null )
       {
-         // best = guessLocation( best, Float.MAX_VALUE, 5 );
+         while( ( best = guessLocation( best, Float.MAX_VALUE, 5, 30 ) ) == null );
          double lseAvg = getLS( rx, best ) / rx.size();
 
-         float radius = 350 + (float) Math.sqrt(lseAvg)/15;
+         float radius = BuildingMap.metersToPixels( 10 ) + (float) Math.sqrt(lseAvg)/23;
 
             // set all aps to have no new levels
          Message msg = handler.obtainMessage();
@@ -105,11 +105,11 @@ public class WifiDataProcessor implements java.lang.Runnable
          r_approx = ap.getApproxRadiusPixels();
          r_min = Math.max( 2, r_approx - 100 );
          r_max = r_approx + 200;
-         r_delta = ( r_max - r_min ) / 60;
+         r_delta = ( r_max - r_min ) / 20;
+         d_theta = Math.toRadians( 45 );
 
          for( double r = r_min; r < r_max; r += r_delta )
          {
-            d_theta = Math.toRadians( Math.max( 10 - 4.5 * r / r_approx, 1 ) );
             for( double a = 0; a < 2 * Math.PI; a += d_theta )
             {
                double x = ap.getY() + r * Math.cos( a );
@@ -160,13 +160,21 @@ public class WifiDataProcessor implements java.lang.Runnable
       return rx;
    }
       
+   PointF last_guess;
 
    public PointF guessLocation( PointF prevGuess,
                                 float  value,
-                                float  delta )
+                                float  delta, int maxDepth )
    {
+      if( maxDepth == 0 )
+         return null;
+
+      if( prevGuess == null )
+         return guessLocation( last_guess, value, delta, maxDepth );
+
       PointF minPt = prevGuess;
       float  minLSE = value;
+      last_guess = prevGuess;
 
       float[] lse = {0,0,0,0};
       PointF[] pts = { new PointF( prevGuess.x + delta, prevGuess.y ),
@@ -214,6 +222,6 @@ public class WifiDataProcessor implements java.lang.Runnable
          return prevGuess;
       }
       else
-         return guessLocation( minPt, minLSE, delta );
+         return guessLocation( minPt, minLSE, delta, maxDepth - 1 );
    }
 }

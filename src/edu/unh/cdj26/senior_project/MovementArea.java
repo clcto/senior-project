@@ -174,6 +174,9 @@ public class MovementArea
 
    private float getProbability( PointF dir )
    {
+      if( dir.length() == 0 )
+         return Float.MIN_VALUE;
+
       dir.x /= dir.length();
       dir.y /= dir.length();
 
@@ -181,7 +184,7 @@ public class MovementArea
       
       for( PointF d : dirs )
       {
-         float dot_prod = d.x * dir.x + d.y * dir.y;
+         float dot_prod = Math.abs( d.x * dir.x + d.y * dir.y );
          if( dot_prod > max )
             max = dot_prod;
       }

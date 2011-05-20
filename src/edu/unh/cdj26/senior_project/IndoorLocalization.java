@@ -20,8 +20,9 @@ public class IndoorLocalization extends Activity
    private static final double WALK_SPEED = BuildingMap.metersToPixels( 1.4 * Math.pow( 10, -9 ) );
 
    private static boolean first_run = true;
+   private static boolean first_data = true;
 
-   private PointF offset;
+   private static PointF offset;
 
    private void setup()
    {
@@ -38,19 +39,19 @@ public class IndoorLocalization extends Activity
             new ArrayList<AccessPoint>() );
          AccessPoint ap;
 
-         ap = new AccessPoint( 1616, 856, 1.9f, 35, 34.7f );
+         ap = new AccessPoint( 1616, 856, 1.9f, 35, 34.5f );
          ap.addMAC( "00:1F:45:48:3E:49" ).addMAC( "00:1F:45:48:3E:48" ).addMAC( "00:1F:45:48:3E:4B" );
          accessPoints.add( ap );
 
-         ap = new AccessPoint( 465, 757, 1.9f, 35, 34.7f );
+         ap = new AccessPoint( 465, 757, 1.9f, 35, 34.5f );
          ap.addMAC( "00:1A:E8:14:D2:AB" ).addMAC( "00:1A:E8:14:D2:A8" ).addMAC( "00:1A:E8:14:D2:A9" );
          accessPoints.add( ap );
 
-         ap = new AccessPoint( 2708, 823, 1.9f, 35, 34.7f );
+         ap = new AccessPoint( 2708, 823, 1.9f, 35, 34.5f );
          ap.addMAC( "00:1F:45:48:38:3B" ).addMAC( "00:1F:45:48:38:3A" ).addMAC( "00:1F:45:48:38:39" );
          accessPoints.add( ap );
 
-         ap = new AccessPoint( 780, 808, 4, 60, 34.7f );
+         ap = new AccessPoint( 780, 808, 4, 60, 34.5f );
          ap.addMAC( "00:1A:E8:14:B5:19" ).addMAC( "00:1A:E8:14:B5:1A" ).addMAC( "00:1A:E8:14:B5:18" );
          accessPoints.add( ap );
 
@@ -77,6 +78,8 @@ public class IndoorLocalization extends Activity
          WifiDataProcessor.numScans = 10;
 
          first_run = false;
+
+         offset = new PointF( 0, 0 );
 
       }
    }
@@ -160,6 +163,21 @@ public class IndoorLocalization extends Activity
                pause();
             showDialog( CAPTURE_FILENAME, null );
             break; 
+         case R.id.calibrate:
+            first_data = true;
+            WifiDataProcessor.numScans = 10;
+            if( !running )
+               resume(); 
+            break;
+         case R.id.aps:
+            BuildingMap.showAPs = ! BuildingMap.showAPs;
+            break;
+         case R.id.wifi_locations:
+            BuildingMap.showWifi = ! BuildingMap.showWifi;
+            break;
+         case R.id.movement_areas:
+            BuildingMap.showRect = ! BuildingMap.showRect;
+            break;
       }
 
       return true;
@@ -205,7 +223,7 @@ public class IndoorLocalization extends Activity
                      }
                      
 
-                     final File dir = getExternalFilesDir(Environment.DIRECTORY_PICTURES).getAbsoluteFile();
+                     final File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
                      if( dir == null )
                      {
                         Toast.makeText( context, R.string.ERR_EXTERNAL_FAIL, Toast.LENGTH_SHORT ).show();
@@ -221,13 +239,18 @@ public class IndoorLocalization extends Activity
                                                 "Saving. Pleas Wait", true);
                               try
                               {
-                                 File final_dir = new File( dir.getPath() + "/captures/" ); 
-                                 File file = new File( final_dir.getPath() + "/" + filename );
+                                 File final_dir = new File( dir.getPath() + "/IndoorLocalization/" ); 
 
-                                 if( !dir.exists() )
-                                    dir.mkdirs();
+                                 if( !final_dir.exists() )
+                                    final_dir.mkdirs();
+
+
+                                 File file = new File( final_dir.getPath() + "/" + filename );
                                  
+                                 System.err.println( "here" );
                                  OutputStream out = new BufferedOutputStream( new FileOutputStream(file) );
+
+                                 System.err.println( "here2" );
                                  if( !map.saveToFile( out ) )
                                     Toast.makeText( context, R.string.ERR_WRITE_FAIL, Toast.LENGTH_SHORT ).show();
                                  else
@@ -237,6 +260,7 @@ public class IndoorLocalization extends Activity
                               }
                               catch( IOException e )
                               {
+                                 System.err.println( e.getMessage() );
                                  saving.dismiss();
                                  Toast.makeText( context, R.string.ERR_FILE_OPEN_FAIL, Toast.LENGTH_SHORT ).show();
                               }
@@ -309,11 +333,15 @@ public class IndoorLocalization extends Activity
          if( accel == null ) return;
 
          long dt_ns = timestamp - prev_move_timestamp;
-         if( Math.abs( accel[2] - prev_z ) > .35 || dt_ns < 200000 )
+         System.err.println( Math.abs( accel[2] - prev_z ) );
+         System.err.println( dt_ns );
+
+         if( Math.abs( accel[2] - prev_z ) > 0.35 || dt_ns < 200000000 )
          {
                // show user which way the device is pointed and if he is moving
             map.newAccelerometerData( orientation, true );
-            prev_move_timestamp = timestamp;
+            if( Math.abs( accel[2] - prev_z ) > 0.35 )
+               prev_move_timestamp = timestamp;
 
             if( offset != null )
             {
@@ -330,7 +358,7 @@ public class IndoorLocalization extends Activity
 
    private class ServiceNotificationReceiver extends BroadcastReceiver
    {
-      float prev_x, prev_y, prev_r = 1;
+      float prev_x2, prev_y2, prev_r = 1;
 
       @Override
       public void onReceive( Context context, Intent intent )
@@ -338,6 +366,21 @@ public class IndoorLocalization extends Activity
          float new_x = intent.getFloatExtra( "x", -1 );
          float new_y = intent.getFloatExtra( "y", -1 );
          float new_r = intent.getFloatExtra( "radius", 1 );
+         if( first_data )
+         {
+            map.newWifiData( new_x, new_y, new_r );
+
+            prev_x2 = new_x;
+            prev_y2 = new_y;
+            prev_r = new_r;
+             
+            first_data = false;
+         }
+
+         
+         double prev_x = prev_x2 + offset.x;
+         double prev_y = prev_y2 + offset.y;
+         prev_r *= 1.1;
 
          double dx = new_x - prev_x;
          double dy = new_y - prev_y;
@@ -346,12 +389,13 @@ public class IndoorLocalization extends Activity
          if( dist > prev_r + new_r || dist < Math.abs( new_r - prev_r ) )
             // no intersect
          {
-            
+           /* 
             map.newWifiData( new_x, new_y, new_r );
 
-            prev_x = new_x;
-            prev_y = new_y;
+            prev_x2 = new_x;
+            prev_y2 = new_y;
             prev_r = new_r;
+            */
          }
          else
          {
@@ -375,20 +419,18 @@ public class IndoorLocalization extends Activity
 
             double r = Math.sqrt( dx*dx + dy*dy );
 
-            r = Math.max( r, BuildingMap.metersToPixels( 7 ) );
+            r = Math.max( r, BuildingMap.metersToPixels( 9 ) );
 
-            map.newData( prev_x, prev_y, prev_r, new_x, new_y, new_r, x, y, r, offset ); 
+            map.newData( prev_x2, prev_y2, prev_r, new_x, new_y, new_r, x, y, r, offset );
 
-            prev_x = (float)x;
-            prev_y = (float)y;
+            prev_x2 = (float)x;
+            prev_y2 = (float)y;
             prev_r = (float)r;
 
             
          }
-         if( offset != null )
-            offset.set( 0, 0 );
-         else
-            offset = new PointF( 0, 0 );
+
+         offset.set( 0, 0 );
       }
    }
 
